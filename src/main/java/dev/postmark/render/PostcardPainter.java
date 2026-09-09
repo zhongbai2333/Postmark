@@ -2,7 +2,6 @@ package dev.postmark.render;
 
 import dev.postmark.model.Postcard;
 import java.awt.*;
-import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
@@ -25,12 +24,8 @@ public final class PostcardPainter {
             }
             for(var stamp:card.imprints()) {
                 BufferedImage ink=images.get(stamp.asset());
-                AffineTransform before=g.getTransform();
-                double size=stamp.size()*width;
-                g.translate(stamp.x()*width,stamp.y()*height); g.rotate(stamp.angle());
-                // Preserve the original item/texture appearance. No added ring, recoloring or ink mask.
-                g.drawImage(ink,(int)(-size/2),(int)(-size/2),(int)size,(int)size,null);
-                g.setTransform(before);
+                var layer=StampRaster.paint(width,height,ink,stamp.x(),stamp.y(),stamp.size(),stamp.angle());
+                g.drawImage(layer.image(),layer.x(),layer.y(),null);
             }
         } finally { g.dispose(); }
         return canvas;

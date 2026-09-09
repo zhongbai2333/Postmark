@@ -320,4 +320,25 @@ class PostcardTest {
         double packed=dev.postmark.client.EnvelopeLayout.packedWidth(.5,720,450);
         assertTrue(packed/.5<=450*.38);assertEquals(216,dev.postmark.client.EnvelopeLayout.packedWidth(1.5,720,450));
     }
+    @Test void deletingCardsPreservesCollectionAndAlwaysLeavesAValidSelection() throws Exception {
+        var album=Album.empty().unlock(new StampDefinition("venue/visitor","One","ink",false));
+        var first=album.current();album=album.addCard();var middle=album.current();album=album.addCard();var last=album.current();
+        album=album.select(middle).remove(middle);assertEquals(last,album.current());assertEquals(2,album.cards().size());
+        assertEquals(album,album.remove(UUID.randomUUID()));
+        album=album.remove(first);assertEquals(last,album.current());
+        var empty=album.remove(last);assertEquals(1,empty.cards().size());assertNotEquals(last,empty.current());
+        assertTrue(empty.selected().imprints().isEmpty());assertEquals(album.stamps(),empty.stamps());
+        var store=new AlbumStore(temporary,"delete");store.save(empty);assertEquals(empty,store.load());
+        assertThrows(IllegalArgumentException.class,()->empty.select(first));
+    }
+    @Test void displayAndInputShareTheSameIntegerPaperRectangle() {
+        for(int width:List.of(719,720,853)) for(int height:List.of(449,450,481)) for(double ratio:List.of(.5,1.0,1.5,4.0)) {
+            var v=dev.postmark.render.PaperViewport.fit(width,height,ratio);
+            assertTrue(v.width()>0 && v.height()>0);
+            assertEquals(0,v.nx(v.x()));assertEquals(1,v.nx(v.x()+v.width()));
+            assertEquals(0,v.ny(v.y()));assertEquals(1,v.ny(v.y()+v.height()));
+            double mx=v.x()+v.width()*.3713,my=v.y()+v.height()*.5317;
+            assertEquals(mx,v.x()+v.nx(mx)*v.width(),1e-10);assertEquals(my,v.y()+v.ny(my)*v.height(),1e-10);
+        }
+    }
 }

@@ -30,6 +30,18 @@ public record Album(int version, UUID current, List<Postcard> cards, List<StampD
         int i = cards.indexOf(selected());
         return new Album(version, cards.get(Math.floorMod(i + offset, cards.size())).id(), cards, stamps);
     }
+    public Album select(UUID id) {
+        if(cards.stream().noneMatch(c->c.id().equals(id))) throw new IllegalArgumentException("Unknown postcard");
+        return new Album(version,id,cards,stamps);
+    }
+    public Album remove(UUID id) {
+        int index=-1;for(int i=0;i<cards.size();i++) if(cards.get(i).id().equals(id)) {index=i;break;}
+        if(index<0) return this;
+        var next=new ArrayList<>(cards);next.remove(index);
+        if(next.isEmpty()) next.add(Postcard.blank());
+        UUID selected=current.equals(id)?next.get(Math.min(index,next.size()-1)).id():current;
+        return new Album(version,selected,next,stamps);
+    }
     public Album unlock(StampDefinition stamp) {
         var next = new ArrayList<>(stamps);
         int existing=-1;

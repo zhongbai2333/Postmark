@@ -34,9 +34,8 @@ public final class SignatureScreen extends Screen {
     private Postcard card() { return session.album().selected(); }
     private static long now() { return System.nanoTime()/1_000_000; }
     private void layout() {
-        double maxW=Math.max(70,width-220),maxH=Math.max(45,height-100);
-        w=Math.min(maxW,maxH*card().aspectRatio())*.8; h=w/card().aspectRatio();
-        x=(width-w)/2.0+12; y=(height-h)/2.0;
+        var viewport=dev.postmark.render.PaperViewport.fit(width,height,card().aspectRatio());
+        x=viewport.x();y=viewport.y();w=viewport.width();h=viewport.height();
     }
     @Override protected void init() {
         layout(); if(opened==0) opened=now();

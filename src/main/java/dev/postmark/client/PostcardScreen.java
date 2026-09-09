@@ -33,7 +33,10 @@ public final class PostcardScreen extends Screen {
     private final String requested;
     private final Map<String,Identifier> textures = new HashMap<>();
     private final Map<String,BufferedImage> images = new HashMap<>();
-    private Identifier canvas, sendCanvas;
+    private Identifier canvas, sendCanvas,landingTexture;
+    private dev.postmark.render.StampRaster.Layer landingLayer;
+    private LandingKey landingKey;
+    private record LandingKey(String asset,int width,int height,double x,double y,double size,double angle) {}
     private StampDefinition tool;
     private boolean erasing, dragging, clickHeld;
     private double pickupX,pickupY;
@@ -89,9 +92,8 @@ public final class PostcardScreen extends Screen {
         if(canvas==null) try { refresh(); } catch(Exception e) { fail(e); }
     }
     private void layout() {
-        double maxW=Math.max(70,width-220), maxH=Math.max(45,height-100);
-        cardW=Math.min(maxW,maxH*card().aspectRatio())*UI_SCALE; cardH=cardW/card().aspectRatio();
-        cardX=(width-cardW)/2.0+12; cardY=(height-cardH)/2.0;
+        var viewport=dev.postmark.render.PaperViewport.fit(width,height,card().aspectRatio());
+        cardX=viewport.x();cardY=viewport.y();cardW=viewport.width();cardH=viewport.height();
     }
     private boolean busy() { return photoChoice!=null || pressing!=null || exporting || packing || cardTurn!=null; }
     private Postcard card() { return session.album().selected(); }
@@ -288,12 +290,15 @@ public final class PostcardScreen extends Screen {
         g.fill(21,claspY+5,41,claspY+14,0xFF735439);
         for(int dotX=26;dotX<=34;dotX+=4) g.fill(dotX,claspY+9,dotX+2,claspY+11,0xFFF5DDA2);
         if(bagClaspHit(mouseX,mouseY)) hover="解开袋口，找印章 · Tab";
+        g.pose().pushMatrix();g.pose().translate(width-42,64);g.pose().rotate(-.06f);g.pose().scale(2f,2f);
+        DeskControls.draw(g,DeskControls.Kind.BOOK,0,0,true);g.pose().popMatrix();
         DeskControls.draw(g,DeskControls.Kind.NEW_PAPER,(int)(cardX+cardW-14),(int)cardY-26,true);
         DeskControls.draw(g,DeskControls.Kind.PLAIN_PAPER,(int)(cardX+cardW-48),(int)cardY-26,card().background()!=null);
         DeskControls.draw(g,DeskControls.Kind.FOLDER,(int)(cardX+cardW+32),(int)(cardY+cardH-54),true);
         DeskControls.draw(g,DeskControls.Kind.CLOSE,width-22,22,true);
         if(hover.isEmpty() && overCard(mouseX,mouseY)) hover=dragging?(isTicket(tool)?"左键放下纪念票 · 右键拖动调大小 · 滚轮旋转":"左键盖印 · 右键拖动调大小 · 滚轮旋转"):erasing?"点击擦除最上层印迹":"拖入 PNG/JPG 更换底片";
         String tagHint=collectionTag.hint(mouseX,mouseY);if(!tagHint.isEmpty() && !dragging && !erasing) hover=tagHint;
+        if(bookHit(mouseX,mouseY)) hover="打开收集册，翻阅或删除明信片";
         if(DeskControls.hit(mouseX,mouseY,cardX+cardW-14,cardY-26)) hover="新建信纸 · N";
         if(DeskControls.hit(mouseX,mouseY,cardX+cardW-48,cardY-26)) hover="恢复素色信纸 · B";
         if(DeskControls.hit(mouseX,mouseY,cardX+cardW+32,cardY+cardH-54)) hover="打开导出目录 · F";
@@ -303,6 +308,7 @@ public final class PostcardScreen extends Screen {
         if(!bag.isOpen() && !busy()) HoverHint.draw(g,font,hover.isEmpty() && recent?shortStatus():hover,width,height);
         if(bag!=null && bag.isOpen()) { bag.layout(width,height);bag.render(g,mouseX,mouseY,partialTick,session.album().stamps()); }
     }
+    private boolean bookHit(double x,double y) { return Math.abs(x-(width-42))<=27 && Math.abs(y-64)<=28; }
     private boolean bagClaspHit(double x,double y) { return x>=0 && x<64 && bagY(y)>=0 && bagY(y)<36; }
     private void openBag() {
         collectionTag.close();
@@ -409,11 +415,24 @@ public final class PostcardScreen extends Screen {
     public float stampPreviewAmount() { return dragging && !erasing && tool!=null?previewTimer.amount(now()):0; }
     private void drawLandingPreview(GuiGraphicsExtractor g,float amount) {
         if(!overCard(toolX,toolY)) return;
-        int size=(int)(toolSize*cardW);
+        var key=new LandingKey(tool.asset(),card().width(),card().height(),nx(toolX),ny(toolY),toolSize,angle);
+        try {
+            if(!key.equals(landingKey)) {
+                var layer=dev.postmark.render.StampRaster.paint(key.width,key.height,image(key.asset),key.x,key.y,key.size,key.angle);
+                var texture=upload(layer.image());
+                releaseLandingPreview();landingTexture=texture;landingLayer=layer;landingKey=key;
+            }
+        } catch(IOException e) {return;}
         g.enableScissor((int)cardX,(int)cardY,(int)(cardX+cardW),(int)(cardY+cardH));
-        g.pose().pushMatrix();g.pose().translate((float)toolX,(float)toolY);g.pose().rotate((float)angle);
-        try { blitAlpha(g,texture(tool.asset()),-size/2,-size/2,size,size,.48f*amount); } catch(IOException ignored) {}
+        g.pose().pushMatrix();g.pose().translate((float)cardX,(float)cardY);
+        // Keep the same document-pixel sampling phase as the complete postcard texture.
+        g.pose().scale((float)(cardW/card().width()),(float)(cardH/card().height()));
+        blitAlpha(g,landingTexture,landingLayer.x(),landingLayer.y(),landingLayer.image().getWidth(),landingLayer.image().getHeight(),.48f*amount);
         g.pose().popMatrix();g.disableScissor();
+    }
+    private void releaseLandingPreview() {
+        if(landingTexture!=null) minecraft.getTextureManager().release(landingTexture);
+        landingTexture=null;landingLayer=null;landingKey=null;
     }
     private static void blit(GuiGraphicsExtractor g,Identifier id,int x,int y,int w,int h) {
         g.blit(id,x,y,x+w,y+h,0f,1f,0f,1f);
@@ -446,6 +465,7 @@ public final class PostcardScreen extends Screen {
         if(e.button()==0 && bagClaspHit(e.x(),e.y())) { openBag();return true; }
         if(e.button()==0 && !resizing) {
             if(DeskControls.hit(e.x(),e.y(),width-22,22)) { if(dragging) returnTool(toolX,toolY);else onClose();return true; }
+            if(bookHit(e.x(),e.y())) { minecraft.setScreen(new PostcardAlbumScreen(this,session));return true; }
             if(DeskControls.hit(e.x(),e.y(),cardX+cardW-14,cardY-26)) { edit(()->turnTo(session.album().addCard(),1));return true; }
             if(DeskControls.hit(e.x(),e.y(),cardX+cardW-48,cardY-26)) { edit(()->commit(session.album().replace(card().withBackground(null))));return true; }
             if(DeskControls.hit(e.x(),e.y(),cardX+cardW+32,cardY+cardH-54)) { Util.getPlatform().openPath(exportDirectory());return true; }
@@ -731,7 +751,7 @@ public final class PostcardScreen extends Screen {
         minecraft.setScreen(parent);
     }
     @Override public void removed() {
-        cancelPhoto();
+        cancelPhoto();releaseLandingPreview();
         dragging=false; erasing=false; pressing=null; returning.clear(); resizing=false; finishTurn(); releaseSendCanvas();
         if(canvas!=null) { minecraft.getTextureManager().release(canvas); canvas=null; }
         for(var id:textures.values()) minecraft.getTextureManager().release(id);

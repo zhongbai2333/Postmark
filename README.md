@@ -12,6 +12,7 @@ Minecraft 客户端明信片模组：从章袋取出印章，盖下旅途的回�
 - 拖动实体印章落纸；同章可重复盖印，落下后固定，只能擦除。
 - 持章时右键拖动调大小、滚轮旋转；停稳 500 ms 后显示半透明落点预览，继续移动也保持。
 - 展开皮革章袋，在蜂窝章堆中悬停放大；输入展区名，匹配的章从袋里浮出来。
+- 翻开明信片收集册，左右各四张缩略图，翻页查看全部卡片，点击打开或确认删除。
 - 集章吊牌显示收藏数量；翻面查看普通、大师和展馆统计，每十枚解锁可放进明信片的纪念票。
 - 图形控件支持鼠标操作，详细说明仅在底部悬停提示中出现。
 - 与 [SignMeUp / ExhibitionPortal](https://github.com/teaconmc/SignMeUp) 联动，保存原生章面；大师章使用金色握柄。
@@ -24,7 +25,7 @@ Minecraft 客户端明信片模组：从章袋取出印章，盖下旅途的回�
 ## 安装
 
 1. 准备 Minecraft **26.1.2**、NeoForge **26.1.2.75** 和 **Java 25**。当前依赖范围见模组元数据。
-2. 从 [Releases](https://github.com/zhongbai2333/Postmark/releases) 下载 `postmark-26.1.2-0.1.0-alpha.11.jar`，放入客户端实例的 `mods` 文件夹。不要安装 `-sources.jar`。
+2. 从 [Releases](https://github.com/zhongbai2333/Postmark/releases) 下载 `postmark-26.1.2-0.1.0-alpha.12.jar`，放入客户端实例的 `mods` 文件夹。不要安装 `-sources.jar`。
 3. 进入世界，按 **P** 打开明信片；按键可在游戏控制设置中修改。
 
 Postmark 仅需客户端安装。没有 SMU 也能使用，提供一枚“启程”预设章；更多章来自 SMU。联动已验证 ExhibitionPortal **1.1.12**，服务器需正常运行其原有 SMU 环境。
@@ -41,6 +42,7 @@ Postmark 仅需客户端安装。没有 SMU 也能使用，提供一枚“启程
 | 纸张左右箭头 / [ / ] | 翻页 |
 | 纸上方的加号纸张 / 素纸控件 | 新信纸 / 恢复素纸（也可 N / B） |
 | 拖入 PNG、JPG，点击效果预览 | 居中裁切为 3:2 / 完整保留原图比例 |
+| 右上角的大册子图标 | 每屏八张，翻页、打开或删除明信片 |
 | 左下集章吊牌 | 翻面查看统计；点击已解锁的纪念票拿取 |
 | 右下信封角 | 装入信封并翻面签名 |
 | 签名左侧回转箭头 / 橡皮 | 撤回上一笔 / 清空签名（也可 Ctrl+Z / Delete） |
@@ -77,7 +79,7 @@ envelope.png    带签名的信封背面
 ./gradlew build
 ```
 
-Windows 使用 `./gradlew.bat build`，需要 JDK 25。当前 **26 项单元测试**通过，另有真实 Minecraft 工作台和 SMU 集成服务器测试。命令、夹具及验证边界见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [验证记录](docs/VALIDATION.md)。
+Windows 使用 `./gradlew.bat build`，需要 JDK 25。当前 **28 项单元测试**通过，另有真实 Minecraft 工作台和 SMU 集成服务器测试。命令、夹具及验证边界见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [验证记录](docs/VALIDATION.md)。
 
 当前为 alpha：界面主要为中文；拼音搜索、纸张模板和自由选择裁切区域尚未实现（目前为居中裁切）。特殊物品渲染器、远程活动服专用资源包仍需实际验证。
 

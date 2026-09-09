@@ -52,3 +52,7 @@ docs/           操作、设计及验证说明
 代码和原创素材贡献按项目 MIT 许可证提供；引入第三方素材时注明来源及其许可。
 
 仅复测底图与自适应信封（跳过章袋悬停压力流程）：`./gradlew runClient -PsmokeTest -PphotoSmoke`。同样使用独立 run-smoke 目录并检查 smoke-result.txt；适合桌面焦点被导出目录窗口抢走时复查图像流程。
+
+像素对齐专项：`./gradlew runClient -PsmokeTest -PalignmentSmoke`，检查 `run-smoke/alignment-result.txt` 和 `alignment-shots/`。它比较真实 GPU 的虚影/实际着墨轮廓，不依赖桌面鼠标焦点。
+
+收集册专项：`./gradlew runClient -PsmokeTest -PbookSmoke`，检查 `run-smoke/book-result.txt` 和 `book-shots/`，包含分页与删除边界。

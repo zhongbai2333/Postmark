@@ -36,10 +36,8 @@ public class StudioSmoke {
     private static final AtomicInteger screenshots=new AtomicInteger();
     private static MouseButtonEvent mouse(double x,double y) { return new MouseButtonEvent(x,y,new MouseButtonInfo(0,0)); }
     private static double[] point(double u,double v) throws Exception {
-        double maxW=Math.max(70,screen.width-220),maxH=Math.max(45,screen.height-100);
-        double ratio=ClientSession.get().album().selected().aspectRatio();
-        double w=Math.min(maxW,maxH*ratio)*.8,h=w/ratio;
-        return new double[]{(screen.width-w)/2.0+12+w*u,(screen.height-h)/2.0+h*v};
+        var view=dev.postmark.render.PaperViewport.fit(screen.width,screen.height,ClientSession.get().album().selected().aspectRatio());
+        return new double[]{view.x()+view.width()*u,view.y()+view.height()*v};
     }
     private static double[] toolPosition;
     private static void press(double u,double v) throws Exception {
@@ -50,7 +48,7 @@ public class StudioSmoke {
         double[] pos=point(u,v); screen.mouseReleased(mouse(pos[0],pos[1])); toolPosition=pos;
     }
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
-        if(!Boolean.getBoolean("postmark.smoke")) return;
+        if(!Boolean.getBoolean("postmark.smoke") || Boolean.getBoolean("postmark.alignmentOnly") || Boolean.getBoolean("postmark.bookOnly")) return;
         var mc=Minecraft.getInstance(); tick++;
         try {
             if(start<0) {
@@ -59,7 +57,7 @@ public class StudioSmoke {
                     if(Boolean.getBoolean("postmark.photoOnly")) bagBaseline=session.album();
                     if(session.album().stamps().stream().filter(s->s.practice()).count()!=1) throw new AssertionError("Exactly one built-in stamp is allowed");
                     var fresh=dev.postmark.model.Album.empty();
-                    session.update(new dev.postmark.model.Album(1,fresh.current(),fresh.cards(),session.album().stamps()));
+                    session.update(new dev.postmark.model.Album(1,fresh.current(),fresh.cards(),session.album().stamps().stream().filter(s->s.key().equals("practice:0")).toList()));
                     screen=new PostcardScreen(null,session,null); mc.setScreen(screen); start=tick;
 
                 }
