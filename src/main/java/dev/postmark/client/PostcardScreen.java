@@ -40,7 +40,8 @@ public final class PostcardScreen extends Screen {
     private double toolSize=STAMP_SIZE, resizeX, resizeY, resizeSize, cursorOffsetX, cursorOffsetY;
     private boolean resizing;
     private CardTurn cardTurn;
-    private record CardTurn(Identifier previous,long start,int direction) {}
+    private PhotoImportChoice photoChoice;
+    private record CardTurn(Identifier previous,long start,int direction,double previousW,double previousH) {}
     private final dev.postmark.client.StampPreviewTimer previewTimer=new dev.postmark.client.StampPreviewTimer();
     private double angle, toolX, toolY;
     private final SmoothShelfScroll shelfScroll=new SmoothShelfScroll();
@@ -89,10 +90,10 @@ public final class PostcardScreen extends Screen {
     }
     private void layout() {
         double maxW=Math.max(70,width-220), maxH=Math.max(45,height-100);
-        cardW=Math.min(maxW,maxH*1.5)*UI_SCALE; cardH=cardW/1.5;
+        cardW=Math.min(maxW,maxH*card().aspectRatio())*UI_SCALE; cardH=cardW/card().aspectRatio();
         cardX=(width-cardW)/2.0+12; cardY=(height-cardH)/2.0;
     }
-    private boolean busy() { return pressing!=null || exporting || packing || cardTurn!=null; }
+    private boolean busy() { return photoChoice!=null || pressing!=null || exporting || packing || cardTurn!=null; }
     private Postcard card() { return session.album().selected(); }
     private BufferedImage image(String asset) throws IOException {
         BufferedImage image=images.get(asset);
@@ -115,7 +116,7 @@ public final class PostcardScreen extends Screen {
         BufferedImage image=PostcardPainter.paint(card(),this::image);
         Identifier next=upload(image);
         if(canvas!=null) minecraft.getTextureManager().release(canvas);
-        canvas=next;
+        canvas=next;layout();
     }
     private void commit(Album next) throws IOException { session.update(next); refresh(); }
     private void turnTo(Album next,int direction) throws IOException {
@@ -125,8 +126,8 @@ public final class PostcardScreen extends Screen {
         catch(IOException e) { minecraft.getTextureManager().release(nextCanvas); throw e; }
         if(dragging) returnTool(toolX,toolY);
         erasing=false;
-        cardTurn=new CardTurn(canvas,now(),direction);
-        canvas=nextCanvas;
+        cardTurn=new CardTurn(canvas,now(),direction,cardW,cardH);
+        canvas=nextCanvas;layout();
     }
     private void finishTurn() {
         if(cardTurn!=null) {
@@ -162,16 +163,16 @@ public final class PostcardScreen extends Screen {
         int nextX=x+(int)(cardTurn.direction*cardW*.24*lift);
         int nextY=y-(int)(10*(1-settle)+cardH*.075*lift);
         float scale=(float)(.94+.06*settle);
-        if(t<.5) drawTurningSheet(g,canvas,nextX,nextY,scale,1);
-        int oldX=x-(int)(cardTurn.direction*cardW*.15*ease(t));
-        int oldY=y+(int)(12*ease(t));
-        drawTurningSheet(g,cardTurn.previous,oldX,oldY,1f,(float)(1-ease((t-.40)/.60)));
-        if(t>=.5) drawTurningSheet(g,canvas,nextX,nextY,scale,1);
+        if(t<.5) drawTurningSheet(g,canvas,nextX,nextY,scale,1,cardW,cardH);
+        int oldX=(int)((width-cardTurn.previousW)/2+12)-(int)(cardTurn.direction*cardTurn.previousW*.15*ease(t));
+        int oldY=(int)((height-cardTurn.previousH)/2)+(int)(12*ease(t));
+        drawTurningSheet(g,cardTurn.previous,oldX,oldY,1f,(float)(1-ease((t-.40)/.60)),cardTurn.previousW,cardTurn.previousH);
+        if(t>=.5) drawTurningSheet(g,canvas,nextX,nextY,scale,1,cardW,cardH);
     }
-    private void drawTurningSheet(GuiGraphicsExtractor g,Identifier id,int x,int y,float scale,float opacity) {
+    private void drawTurningSheet(GuiGraphicsExtractor g,Identifier id,int x,int y,float scale,float opacity,double paperW,double paperH) {
         if(id==null || opacity<=0) return;
-        int w=(int)(cardW*scale),h=(int)(cardH*scale);
-        x+=(int)(cardW-w)/2;y+=(int)(cardH-h)/2;
+        int w=(int)(paperW*scale),h=(int)(paperH*scale);
+        x+=(int)(paperW-w)/2;y+=(int)(paperH-h)/2;
         g.fill(x+4,y+6,x+w+4,y+h+6,((int)(opacity*36)<<24)|0x30271D);
         blitAlpha(g,id,x,y,w,h,opacity);
     }
@@ -187,6 +188,7 @@ public final class PostcardScreen extends Screen {
         layout();
         g.fill(0,0,width,height,0x58303D35);
         if(packing || exporting) { drawSend(g,mouseX,mouseY); return; }
+        if(photoChoice!=null) { drawPaper(g,(int)cardX,(int)cardY);photoChoice.render(g,font,mouseX,mouseY,width,height);return; }
         // A stitched leather roll stays at the left edge; empty loops remain after tools are lifted.
         g.pose().pushMatrix(); g.pose().translate(0,bagOffset()); g.pose().scale(UI_SCALE,UI_SCALE);
         int bagTop=24,bagBottom=height-36;
@@ -230,13 +232,13 @@ public final class PostcardScreen extends Screen {
         drawArrow(g,-1,arrow==-1 && !busy());drawArrow(g,1,arrow==1 && !busy());
         if(arrow!=0) hover=session.album().cards().size()>1?(arrow<0?"上一张信纸":"下一张信纸"):"只有一张信纸 · N 新建";
         // A corner of an actual envelope is the send affordance.
-        int ex=(int)(cardX+cardW-57*UI_SCALE),ey=(int)(cardY+cardH-32*UI_SCALE);
-        g.pose().pushMatrix(); g.pose().translate(ex,ey); g.pose().scale(UI_SCALE,UI_SCALE); g.pose().translate(-ex,-ey); g.pose().rotateAbout(-.12f,ex+38,ey+22);
-        g.fill(ex+3,ey+4,ex+83,ey+54,0x33362D20);
-        g.fill(ex,ey,ex+80,ey+50,0xFFDBC8A6);
-        triangle(g,ex,ey,ex+80,ey,ex+40,ey+30,0xFFF0E0C0);
-        line(g,ex,ey,ex+40,ey+30,0xFFB6A17E); line(g,ex+40,ey+30,ex+80,ey,0xFFB6A17E);
-        g.fill(ex+61,ey+8,ex+71,ey+20,0xFF9DAB8A); g.pose().popMatrix();
+        int ex=(int)cornerX(),ey=(int)cornerY(),ew=(int)cornerW(),eh=(int)(cornerW()/card().aspectRatio());
+        g.pose().pushMatrix(); g.pose().translate(ex,ey); g.pose().scale(UI_SCALE,UI_SCALE); g.pose().translate(-ex,-ey); g.pose().rotateAbout(-.12f,ex+ew/2f,ey+eh/2f);
+        g.fill(ex+3,ey+4,ex+ew+3,ey+eh+4,0x33362D20);
+        g.fill(ex,ey,ex+ew,ey+eh,0xFFDBC8A6);
+        triangle(g,ex,ey,ex+ew,ey,ex+ew/2,ey+eh*3/5,0xFFF0E0C0);
+        line(g,ex,ey,ex+ew/2,ey+eh*3/5,0xFFB6A17E); line(g,ex+ew/2,ey+eh*3/5,ex+ew,ey,0xFFB6A17E);
+        int mark=Math.max(1,Math.min(ew,eh)/5);g.fill(ex+ew-mark-8,ey+8,ex+ew-8,ey+8+mark,0xFF9DAB8A); g.pose().popMatrix();
         if(envelopeHit(mouseX,mouseY)) hover="装进信封";
         // An eraser sits on the desk, with no toolbar around it.
         int erx=(int)cardX-34,ery=(int)(cardY+cardH)-12;
@@ -362,7 +364,10 @@ public final class PostcardScreen extends Screen {
     private float bagOffset() { return height*(1-UI_SCALE)/2; }
     private double bagY(double y) { return (y-bagOffset())/UI_SCALE; }
     private boolean overBag(double x,double y) { return x>=0 && x<80*UI_SCALE && bagY(y)>=36 && bagY(y)<height-36; }
-    private boolean envelopeHit(double x,double y) { return x>=cardX+cardW-57*UI_SCALE && x<=cardX+cardW+26*UI_SCALE && y>=cardY+cardH-37*UI_SCALE && y<=cardY+cardH+24*UI_SCALE; }
+    private double cornerW() {return Math.min(80,60*card().aspectRatio());}
+    private double cornerX() {return cardX+cardW-cornerW()*.71*UI_SCALE;}
+    private double cornerY() {return cardY+cardH-cornerW()/card().aspectRatio()*.64*UI_SCALE;}
+    private boolean envelopeHit(double x,double y) {return x>=cornerX()-4 && x<=cornerX()+cornerW()*UI_SCALE+4 && y>=cornerY()-4 && y<=cornerY()+cornerW()/card().aspectRatio()*UI_SCALE+4;}
     private void drawEraser(GuiGraphicsExtractor g,double x,double y,boolean held) {
         g.pose().pushMatrix(); g.pose().translate((float)x,(float)y); g.pose().scale(UI_SCALE,UI_SCALE); g.pose().rotate(held?-.35f:-.18f);
         g.fill(-8,held?1:-4,15,held?14:10,0x38312522);
@@ -419,6 +424,18 @@ public final class PostcardScreen extends Screen {
     private double nx(double x) { return (x-cardX)/cardW; }
     private double ny(double y) { return (y-cardY)/cardH; }
     @Override public boolean mouseClicked(MouseButtonEvent e,boolean twice) {
+        if(photoChoice!=null) {
+            if(e.button()==0) {
+                int choice=photoChoice.hit(e.x(),e.y(),width,height);
+                if(choice==2) cancelPhoto();
+                else if(choice>=0) edit(()->{
+                    var photo=photoChoice.photo();String asset=session.store().putImage(photo);
+                    commit(session.album().replace(card().withBackground(asset,photo.getWidth(),photo.getHeight(),choice==0)));
+                    cancelPhoto();say(tr("photo_added"));
+                });
+            }
+            return true;
+        }
         if(busy()) return true;
         if(bag.isOpen()) { toolX=e.x();toolY=e.y();return bag.click(e); }
         if(!dragging && !erasing) {
@@ -512,6 +529,7 @@ public final class PostcardScreen extends Screen {
         return true;
     }
     @Override public boolean keyPressed(KeyEvent e) {
+        if(photoChoice!=null) { if(e.key()==GLFW.GLFW_KEY_ESCAPE) cancelPhoto();return true; }
         if(bag.isOpen()) {
             if(e.key()==GLFW.GLFW_KEY_ESCAPE || e.key()==GLFW.GLFW_KEY_TAB) { bag.close();setFocused(null);return true; }
             bag.search.setFocused(true);setFocused(bag.search);bag.search.keyPressed(e);return true;
@@ -600,10 +618,10 @@ public final class PostcardScreen extends Screen {
         double slide=ease((elapsed-200)/1050), fold=ease((elapsed-1350)/500);
         double flight=flyAt==0?0:ease((now()-flyAt)/1000.0);
         double lift=packing?ease(elapsed/200):1;
-        int finalW=(int)Math.min(216,width*.44);
-        int w=(int)(64+(finalW-64)*lift),h=w*2/3;
-        int x=(int)((cardX+cardW-57*UI_SCALE)*(1-lift)+(width-w)/2.0*lift)+(int)(flight*(width+w));
-        int y=(int)((cardY+cardH-32*UI_SCALE)*(1-lift)+((height-h)/2.0+25)*lift)-(int)(flight*height*.6);
+        int finalW=(int)EnvelopeLayout.packedWidth(card().aspectRatio(),width,height);
+        int w=Math.max(1,(int)(cornerW()*UI_SCALE+(finalW-cornerW()*UI_SCALE)*lift)),h=Math.max(1,(int)(w/card().aspectRatio()));
+        int x=(int)(cornerX()*(1-lift)+(width-w)/2.0*lift)+(int)(flight*(width+w));
+        int y=(int)(cornerY()*(1-lift)+((height-h)/2.0+25)*lift)-(int)(flight*height*.6);
         g.pose().pushMatrix(); g.pose().rotateAbout((float)(flight*-.12),x+w/2f,y+h/2f);
         if(exporting) {
             g.fill(x+4,y+5,x+w+4,y+h+5,0x3030271D);
@@ -616,15 +634,17 @@ public final class PostcardScreen extends Screen {
         g.fill(x+5,y+h+3,x+w+7,y+h+9,0x153A372B);
         g.fill(x+3,y+6,x+w+3,y+h+5,0x253A372B);
         // The open flap swings through an edge-on position before covering the pocket.
-        int flapHeight=(int)(h*.55), flapTip=y+(int)((fold*2-1)*flapHeight);
+        int flapHeight=h*2/3, flapTip=y+(int)((fold*2-1)*flapHeight);
         triangle(g,x,y,x+w,y,x+w/2,flapTip,fold<.5?0xFFC3B191:0xFFEADABD);
         g.fill(x,y,x+w,y+h,0xFFBDAC8C);
         g.fill(x+3,y+2,x+w-3,y+h-3,0xFFD4C4A4);
         int offset=(int)((1-slide)*h*.78);
         if(sendCanvas!=null) {
-            int paperX=(int)(cardX*(1-lift)+(x+9)*lift);
-            int paperY=(int)(cardY*(1-lift)+(y-offset+5)*lift);
-            int paperW=(int)(cardW*(1-lift)+(w-18)*lift),paperH=(int)(cardH*(1-lift)+(h-17)*lift);
+            double margin=Math.max(1,Math.min(w,h)*.065);
+            double fitW=Math.max(1,Math.min(w-margin*2,(h-margin*2)*card().aspectRatio())),fitH=fitW/card().aspectRatio();
+            int paperX=(int)(cardX*(1-lift)+(x+(w-fitW)/2)*lift);
+            int paperY=(int)(cardY*(1-lift)+(y-offset+(h-fitH)/2)*lift);
+            int paperW=(int)(cardW*(1-lift)+fitW*lift),paperH=(int)(cardH*(1-lift)+fitH*lift);
             // The paper remains inside the envelope for the entire fold. The opaque pocket
             // and flap cover it geometrically; finishing the slide never hides its texture.
             g.enableScissor(0,0,width,height);
@@ -681,15 +701,37 @@ public final class PostcardScreen extends Screen {
         if(busy() || bag.isOpen() || paths.isEmpty()) return;
         edit(()->{
             BufferedImage image=ImageFiles.readPhoto(paths.getFirst());
-            String asset=session.store().putImage(image);
-            commit(session.album().replace(card().withBackground(asset))); say(tr("photo_added"));
+            Identifier cropped=null,original=null;
+            try {
+                var originalCard=card().withBackground("photo-preview",image.getWidth(),image.getHeight(),false);
+                PostcardPainter.Images source=name->name.equals("photo-preview")?image:this.image(name);
+                cropped=upload(PostcardPainter.paint(card().withBackground("photo-preview"),source));
+                original=upload(PostcardPainter.paint(originalCard,source));
+                photoChoice=new PhotoImportChoice(image,cropped,original,originalCard.aspectRatio());
+                if(dragging) returnTool(toolX,toolY);
+                erasing=false;collectionTag.close();
+            } catch(Exception e) {
+                if(cropped!=null) minecraft.getTextureManager().release(cropped);
+                if(original!=null) minecraft.getTextureManager().release(original);
+                throw e;
+            }
         });
     }
+    public boolean choosingPhoto() { return photoChoice!=null; }
+    private void cancelPhoto() {
+        if(photoChoice!=null) {
+            minecraft.getTextureManager().release(photoChoice.cropped());
+            minecraft.getTextureManager().release(photoChoice.original());
+            photoChoice=null;
+        }
+    }
     @Override public void onClose() {
+        if(photoChoice!=null) { cancelPhoto();return; }
         if(busy()) return;
         minecraft.setScreen(parent);
     }
     @Override public void removed() {
+        cancelPhoto();
         dragging=false; erasing=false; pressing=null; returning.clear(); resizing=false; finishTurn(); releaseSendCanvas();
         if(canvas!=null) { minecraft.getTextureManager().release(canvas); canvas=null; }
         for(var id:textures.values()) minecraft.getTextureManager().release(id);

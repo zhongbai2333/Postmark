@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     id 'net.neoforged.moddev' version '2.0.140'
 }
-version = '0.1.0-alpha.10'
+version = '0.1.0-alpha.11'
 group = 'dev.postmark'
 base { archivesName = 'postmark-26.1.2' }
 java {
@@ -17,6 +17,7 @@ neoForge {
             if (project.hasProperty('smokeTest')) {
                 gameDirectory = file('run-smoke')
                 systemProperty 'postmark.smoke', 'true'
+                if (project.hasProperty('photoSmoke')) systemProperty 'postmark.photoOnly', 'true'
                 programArgument '--width'
                 programArgument '1440'
                 programArgument '--height'

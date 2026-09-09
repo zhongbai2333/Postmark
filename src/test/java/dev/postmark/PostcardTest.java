@@ -260,4 +260,64 @@ class PostcardTest {
         var blank=PostcardPainter.paint(base.selected(),store::image);
         assertNotEquals(blank.getRGB(1080,840),painted.getRGB(1080,840));
     }
+    @Test void originalPhotoRetainsEdgesAndCropUsesThreeByTwo() throws Exception {
+        var photo=new java.awt.image.BufferedImage(200,400,java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        var g=photo.createGraphics();g.setColor(java.awt.Color.BLUE);g.fillRect(0,0,200,400);
+        g.setColor(java.awt.Color.RED);g.fillRect(0,0,200,60);
+        g.setColor(java.awt.Color.GREEN);g.fillRect(0,340,200,60);g.dispose();
+        var original=Postcard.blank().withBackground("photo",200,400,false);
+        var result=PostcardPainter.paint(original,name->photo);
+        assertEquals(900,result.getWidth());assertEquals(1800,result.getHeight());
+        assertEquals(0xffff0000,result.getRGB(450,20));assertEquals(0xff00ff00,result.getRGB(450,1780));
+        var crop=PostcardPainter.paint(original.withBackground("photo",200,400,true),name->photo);
+        assertEquals(1800,crop.getWidth());assertEquals(1200,crop.getHeight());
+        assertEquals(0xff0000ff,crop.getRGB(900,20));assertEquals(0xff0000ff,crop.getRGB(900,1180));
+        for(int[] dimensions:List.of(new int[]{500,500},new int[]{2000,500},new int[]{1,8192},new int[]{8192,1})) {
+            var card=original.withBackground("photo",dimensions[0],dimensions[1],false);
+            assertEquals(1800,Math.max(card.width(),card.height()));assertTrue(Math.min(card.width(),card.height())>=1);
+        }
+    }
+    @Test void squareInkAndRotatedErasingUseActualPaperRatio() throws Exception {
+        var ink=new java.awt.image.BufferedImage(20,20,java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        var g=ink.createGraphics();g.setColor(java.awt.Color.MAGENTA);g.fillRect(0,0,20,20);g.dispose();
+        for(int[] dimensions:List.of(new int[]{400,800},new int[]{800,400},new int[]{400,400})) {
+            var card=Postcard.blank().withBackground("photo",dimensions[0],dimensions[1],false).stamp("test","ink",.5,.5,.2,0);
+            var photo=new java.awt.image.BufferedImage(dimensions[0],dimensions[1],java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            var rendered=PostcardPainter.paint(card,name->name.equals("ink")?ink:photo);
+            int minX=9999,minY=9999,maxX=-1,maxY=-1;
+            for(int y=0;y<rendered.getHeight();y++) for(int x=0;x<rendered.getWidth();x++) if(rendered.getRGB(x,y)==0xffff00ff) {
+                minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+            }
+            assertEquals(maxX-minX,maxY-minY);
+            assertNotNull(card.topAt(.5,.5+.09*card.aspectRatio()));assertNull(card.topAt(.5,.5+.11*card.aspectRatio()));
+            var rotated=card.erase(card.imprints().getFirst().id()).stamp("test","ink",.5,.5,.2,Math.PI/4);
+            assertNotNull(rotated.topAt(.63,.5));assertNull(rotated.topAt(.61,.5+.11*card.aspectRatio()));
+        }
+    }
+    @Test void paperDimensionsSurviveEditsAndOlderDraftsDefaultToThreeByTwo() throws Exception {
+        var store=new AlbumStore(temporary,"dimensions");var album=Album.empty();
+        var card=album.selected().withBackground("photo",400,800,false).stamp("one","ink",.5,.5,.2,0);
+        card=card.withSignature(List.of(new InkStroke(List.of(new InkPoint(.5,.5)),0xff364f62,.0022)));
+        store.save(album.replace(card));assertEquals(card,store.load().selected());
+        var erased=card.erase(card.imprints().getFirst().id());assertEquals(.5,erased.aspectRatio());
+        assertEquals(1.5,card.withBackground(null).aspectRatio());
+        store.save(album);var path=store.directory().resolve("album.json");
+        var json=com.google.gson.JsonParser.parseString(Files.readString(path)).getAsJsonObject();
+        var old=json.getAsJsonArray("cards").get(0).getAsJsonObject();old.remove("width");old.remove("height");
+        Files.writeString(path,json.toString());assertEquals(album,store.load());
+    }
+    @Test void matchingEnvelopeAndSignatureExportAtOriginalRatio() throws Exception {
+        var store=new AlbumStore(temporary,"portrait-export");
+        var photo=new java.awt.image.BufferedImage(400,800,java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        String asset=store.putImage(photo);
+        var card=Postcard.blank().withBackground(asset,400,800,false).withSignature(List.of(new InkStroke(List.of(new InkPoint(.2,.3),new InkPoint(.8,.7)),0xff364f62,.004)));
+        var envelope=PostcardPainter.paintEnvelopeFront(card);assertEquals(900,envelope.getWidth());assertEquals(1800,envelope.getHeight());
+        var folder=dev.postmark.storage.PostcardExporter.export(store,card);
+        for(String side:List.of("front.png","envelope.png")) {
+            var png=ImageIO.read(folder.resolve(side).toFile());assertEquals(900,png.getWidth());assertEquals(1800,png.getHeight());
+        }
+        assertEquals(0xff364f62,ImageIO.read(folder.resolve("envelope.png").toFile()).getRGB(450,900));
+        double packed=dev.postmark.client.EnvelopeLayout.packedWidth(.5,720,450);
+        assertTrue(packed/.5<=450*.38);assertEquals(216,dev.postmark.client.EnvelopeLayout.packedWidth(1.5,720,450));
+    }
 }

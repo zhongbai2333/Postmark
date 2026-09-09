@@ -20,6 +20,9 @@ import javax.imageio.ImageIO;
 @EventBusSubscriber(modid="postmark",value=Dist.CLIENT)
 public class StudioSmoke {
     private static int tick;
+    private static Path photoFixture;
+    private static java.util.UUID photoCard;
+    private static dev.postmark.model.Postcard beforeCancel;
     private static int start=-1;
     private static PostcardScreen screen;
     private static String shot;
@@ -32,17 +35,18 @@ public class StudioSmoke {
     private static String bagKey;
     private static final AtomicInteger screenshots=new AtomicInteger();
     private static MouseButtonEvent mouse(double x,double y) { return new MouseButtonEvent(x,y,new MouseButtonInfo(0,0)); }
-    private static double[] point(double u,double v) {
+    private static double[] point(double u,double v) throws Exception {
         double maxW=Math.max(70,screen.width-220),maxH=Math.max(45,screen.height-100);
-        double w=Math.min(maxW,maxH*1.5)*.8,h=w/1.5;
+        double ratio=ClientSession.get().album().selected().aspectRatio();
+        double w=Math.min(maxW,maxH*ratio)*.8,h=w/ratio;
         return new double[]{(screen.width-w)/2.0+12+w*u,(screen.height-h)/2.0+h*v};
     }
     private static double[] toolPosition;
-    private static void press(double u,double v) {
+    private static void press(double u,double v) throws Exception {
         double[] pos=point(u,v); double[] from=new double[]{38*.8,screen.height*.1+70*.8}; screen.mouseClicked(mouse(from[0],from[1]),false);
         screen.mouseDragged(mouse(pos[0],pos[1]),0,0);
     }
-    private static void release(double u,double v) {
+    private static void release(double u,double v) throws Exception {
         double[] pos=point(u,v); screen.mouseReleased(mouse(pos[0],pos[1])); toolPosition=pos;
     }
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
@@ -52,14 +56,16 @@ public class StudioSmoke {
             if(start<0) {
                 if(mc.screen instanceof TitleScreen && mc.getOverlay()==null && tick>40) {
                     var session=ClientSession.get();
+                    if(Boolean.getBoolean("postmark.photoOnly")) bagBaseline=session.album();
                     if(session.album().stamps().stream().filter(s->s.practice()).count()!=1) throw new AssertionError("Exactly one built-in stamp is allowed");
                     var fresh=dev.postmark.model.Album.empty();
                     session.update(new dev.postmark.model.Album(1,fresh.current(),fresh.cards(),session.album().stamps()));
                     screen=new PostcardScreen(null,session,null); mc.setScreen(screen); start=tick;
+
                 }
                 return;
             }
-            int t=tick-start;
+            int t=tick-start+(Boolean.getBoolean("postmark.photoOnly")?739:0);
             // Allow asynchronous PNG export, flight and the new-card transition to finish.
             if(t>=390 && t<420) return;
             if(t>=420) t-=30;
@@ -380,6 +386,68 @@ public class StudioSmoke {
                 if(mc.screen==screen) throw new AssertionError("Visible close control failed");
                 ClientSession.clear();if(!ClientSession.get().album().equals(bagBaseline)) throw new AssertionError("Progress test cleanup failed");
                 Files.writeString(mc.gameDirectory.toPath().resolve("smoke-result.txt"),"PASS: numeric tag and punched milestones; counts exclude practice and tickets; new expert updates distinct venue/type counts; earned ticket pickup, placement, save and export composition; visible mouse-only new/plain/folder/close and signature undo/clear controls; prior 121-stamp bag, scrolling, return, resize, preview, signature and export regressions passed.");
+                var session=ClientSession.get();var fresh=dev.postmark.model.Album.empty().unlock(session.album().stamps().getFirst());session.update(fresh);
+                screen=new PostcardScreen(null,session,null);mc.setScreen(screen);
+                var photo=new java.awt.image.BufferedImage(400,800,java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                var pg=photo.createGraphics();pg.setColor(new java.awt.Color(0xA7BDAD));pg.fillRect(0,0,400,800);
+                pg.setColor(new java.awt.Color(0xEAD7A4));pg.fillRect(0,0,400,160);
+                pg.setColor(new java.awt.Color(0x729998));pg.fillRect(0,640,400,160);
+                pg.setColor(new java.awt.Color(0xF3EDDD));pg.fillRect(40,260,320,280);pg.dispose();
+                photoFixture=mc.gameDirectory.toPath().resolve("photo-choice-fixture.png");ImageIO.write(photo,"PNG",photoFixture.toFile());
+                screen.onFilesDrop(java.util.List.of(photoFixture));
+                if(!screen.choosingPhoto() || session.album().selected().background()!=null) throw new AssertionError("Import must await a visible choice");
+                screen.keyPressed(new KeyEvent(78,0,0));if(session.album().cards().size()!=1) throw new AssertionError("Import leaked keyboard input");
+            }
+            if(t==715) shot="29-photo-choice.png";
+            if(t==718) {screen.mouseClicked(mouse(screen.width/2+100,screen.height/2),false);screen.mouseReleased(mouse(screen.width/2+100,screen.height/2));}
+            if(t==725) {
+                if(screen.choosingPhoto() || ClientSession.get().album().selected().aspectRatio()!=.5) throw new AssertionError("Original choice must create portrait paper");
+                press(.5,.5);release(.5,.5);
+            }
+            if(t==738) {
+                var card=ClientSession.get().album().selected();if(card.imprints().size()!=1) throw new AssertionError("Portrait stamping failed");
+                shot="30-portrait-stamp.png";
+                screen.keyPressed(new KeyEvent(69,0,0));var miss=point(.5,.546);screen.mouseClicked(mouse(miss[0],miss[1]),false);
+                if(ClientSession.get().album().selected().imprints().size()!=1) throw new AssertionError("Portrait eraser uses old aspect ratio");
+                var hit=point(.5,.53);screen.mouseClicked(mouse(hit[0],hit[1]),false);
+                if(!ClientSession.get().album().selected().imprints().isEmpty()) throw new AssertionError("Portrait eraser failed");
+            }
+            if(t==741) {press(.5,.5);release(.5,.5);}
+            if(t==753) {var p=point(.99,.99);screen.mouseClicked(mouse(p[0],p[1]),false);}
+            if(t==767) shot="31-portrait-packing.png";
+            if(t==792) shot="32-portrait-sealed.png";
+            if(t==815) {
+                if(!(mc.screen instanceof SignatureScreen reverse)) throw new AssertionError("Portrait envelope did not flip");
+                sign(reverse);photoCard=ClientSession.get().album().current();
+            }
+            if(t==820) shot="33-portrait-signature.png";
+            if(t==823) {var p=point(1,1);mc.screen.mouseClicked(mouse(p[0]+22,p[1]-14),false);}
+            if(t==830) shot="34-portrait-flight.png";
+            if(t==890) {
+                if(!(mc.screen instanceof PostcardScreen) || ClientSession.get().album().current().equals(photoCard)) throw new AssertionError("Portrait export did not open a fresh card");
+                var signed=ClientSession.get().album().cards().stream().filter(c->c.id().equals(photoCard)).findFirst().orElseThrow();
+                if(signed.width()!=900 || signed.height()!=1800 || signed.signature().isEmpty()) throw new AssertionError("Portrait draft or signature lost");
+                Path last;
+                try(var dirs=Files.list(screen.exportDirectory())) {last=dirs.filter(Files::isDirectory).max(java.util.Comparator.comparing(p->p.getFileName().toString())).orElseThrow();}
+                for(String side:java.util.List.of("front.png","envelope.png")) {
+                    var png=ImageIO.read(last.resolve(side).toFile());if(png.getWidth()!=900 || png.getHeight()!=1800) throw new AssertionError("Exported portrait proportions wrong: "+side);
+                }
+                screen.onFilesDrop(java.util.List.of(photoFixture));screen.mouseClicked(mouse(screen.width/2-100,screen.height/2),false);
+                if(ClientSession.get().album().selected().aspectRatio()!=1.5) throw new AssertionError("Crop choice must keep 3:2");
+                beforeCancel=ClientSession.get().album().selected();screen.onFilesDrop(java.util.List.of(photoFixture));
+                screen.mouseClicked(mouse(screen.width-22,22),false);
+                if(screen.choosingPhoto() || !ClientSession.get().album().selected().equals(beforeCancel)) throw new AssertionError("Mouse cancel modified draft");
+                var p=point(0,.5);screen.mouseClicked(mouse(p[0]-26,p[1]),false);
+            }
+            if(t==896) shot="35-mixed-ratio-page-turn.png";
+            if(t==907) {
+                if(ClientSession.get().album().selected().aspectRatio()!=.5) throw new AssertionError("Page turn lost portrait aspect");
+                shot="36-portrait-reopened.png";
+            }
+            if(t==914) {
+                ClientSession.get().update(bagBaseline);screen.onClose();ClientSession.clear();
+                if(!ClientSession.get().album().equals(bagBaseline)) throw new AssertionError("Photo test cleanup failed");
+                Files.writeString(mc.gameDirectory.toPath().resolve("smoke-result.txt"),"PASS: import previews await mouse choice; crop and original proportions; cancel preserves draft; portrait stamping and aspect-aware erasing; adaptive envelope packing, flip, signing and both PNG exports; mixed-ratio page turns and reopen"+(Boolean.getBoolean("postmark.photoOnly")?"; focused photo/envelope run passed.":"; all alpha.10 collection, 121-stamp bag and existing interaction regressions passed."));
                 mc.stop();
             }
         } catch(Throwable e) {
@@ -388,7 +456,7 @@ public class StudioSmoke {
             mc.stop();
         }
     }
-    private static void sign(SignatureScreen reverse) {
+    private static void sign(SignatureScreen reverse) throws Exception {
         double[][] path={{.56,.78},{.59,.69},{.57,.80},{.64,.73},{.60,.80},{.68,.75},{.66,.80},{.72,.77},{.74,.79},{.79,.72},{.76,.81},{.83,.77},{.84,.79},{.90,.76}};
         var first=point(path[0][0],path[0][1]); reverse.mouseClicked(mouse(first[0],first[1]),false);
         for(var uv:path) { var pos=point(uv[0],uv[1]); reverse.mouseDragged(mouse(pos[0],pos[1]),0,0); }

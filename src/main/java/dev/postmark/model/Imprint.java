@@ -12,8 +12,11 @@ public record Imprint(UUID id, String source, String asset, double x, double y,
                 || size < .02 || size > .5) throw new IllegalArgumentException("Invalid imprint");
     }
     public boolean contains(double px, double py) {
-        // Work in postcard-width units; the card aspect ratio is 3:2.
-        double dx = px - x, dy = (py - y) / 1.5;
+        return contains(px,py,1.5);
+    }
+    public boolean contains(double px,double py,double aspectRatio) {
+        // Both axes use paper-width units so rotated stamps remain square on any paper.
+        double dx = px - x, dy = (py - y) / aspectRatio;
         double cos = Math.cos(angle), sin = Math.sin(angle);
         return Math.abs(dx * cos + dy * sin) <= size / 2
                 && Math.abs(-dx * sin + dy * cos) <= size / 2;

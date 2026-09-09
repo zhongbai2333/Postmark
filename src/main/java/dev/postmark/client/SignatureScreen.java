@@ -35,13 +35,13 @@ public final class SignatureScreen extends Screen {
     private static long now() { return System.nanoTime()/1_000_000; }
     private void layout() {
         double maxW=Math.max(70,width-220),maxH=Math.max(45,height-100);
-        w=Math.min(maxW,maxH*1.5)*.8; h=w/1.5;
+        w=Math.min(maxW,maxH*card().aspectRatio())*.8; h=w/card().aspectRatio();
         x=(width-w)/2.0+12; y=(height-h)/2.0;
     }
     @Override protected void init() {
         layout(); if(opened==0) opened=now();
         try {
-            if(front==null) front=upload(PostcardPainter.paintEnvelopeFront());
+            if(front==null) front=upload(PostcardPainter.paintEnvelopeFront(card()));
             if(back==null) back=upload(PostcardPainter.paintBack(card().withSignature(List.of())));
         } catch(Exception e) { error(e); }
     }
@@ -62,7 +62,7 @@ public final class SignatureScreen extends Screen {
         actions.clear();
         double t=Math.clamp((now()-opened)/750.0,0,1), smooth=t*t*(3-2*t);
         double scale=Math.max(.006,Math.abs(Math.cos(Math.PI*smooth)));
-        double initialScale=Math.min(216,width*.44)/w;
+        double initialScale=EnvelopeLayout.packedWidth(card().aspectRatio(),width,height)/w;
         double grow=initialScale+(1-initialScale)*smooth;
         int dw=(int)(w*scale*grow),dh=(int)(h*grow);
         int left=(int)((width/2.0)*(1-smooth)+(x+w/2)*smooth-dw/2.0),top=(int)((height/2.0+25)*(1-smooth)+(y+h/2)*smooth-dh/2.0);
