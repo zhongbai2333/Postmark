@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     id 'net.neoforged.moddev' version '2.0.140'
 }
-version = '0.1.0-alpha.12'
+version = '0.1.0-alpha.13'
 group = 'dev.postmark'
 base { archivesName = 'postmark-26.1.2' }
 java {

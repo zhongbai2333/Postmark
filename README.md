@@ -25,7 +25,7 @@ Minecraft 客户端明信片模组：从章袋取出印章，盖下旅途的回�
 ## 安装
 
 1. 准备 Minecraft **26.1.2**、NeoForge **26.1.2.75** 和 **Java 25**。当前依赖范围见模组元数据。
-2. 从 [Releases](https://github.com/zhongbai2333/Postmark/releases) 下载 `postmark-26.1.2-0.1.0-alpha.12.jar`，放入客户端实例的 `mods` 文件夹。不要安装 `-sources.jar`。
+2. 从 [Releases](https://github.com/zhongbai2333/Postmark/releases) 下载 `postmark-26.1.2-0.1.0-alpha.13.jar`，放入客户端实例的 `mods` 文件夹。不要安装 `-sources.jar`。
 3. 进入世界，按 **P** 打开明信片；按键可在游戏控制设置中修改。
 
 Postmark 仅需客户端安装。没有 SMU 也能使用，提供一枚“启程”预设章；更多章来自 SMU。联动已验证 ExhibitionPortal **1.1.12**，服务器需正常运行其原有 SMU 环境。
@@ -42,7 +42,7 @@ Postmark 仅需客户端安装。没有 SMU 也能使用，提供一枚“启程
 | 纸张左右箭头 / [ / ] | 翻页 |
 | 纸上方的加号纸张 / 素纸控件 | 新信纸 / 恢复素纸（也可 N / B） |
 | 拖入 PNG、JPG，点击效果预览 | 居中裁切为 3:2 / 完整保留原图比例 |
-| 右上角的大册子图标 | 每屏八张，翻页、打开或删除明信片 |
+| 加号右侧的大册子图标 | 每屏八张，翻页、打开或删除明信片 |
 | 左下集章吊牌 | 翻面查看统计；点击已解锁的纪念票拿取 |
 | 右下信封角 | 装入信封并翻面签名 |
 | 签名左侧回转箭头 / 橡皮 | 撤回上一笔 / 清空签名（也可 Ctrl+Z / Delete） |

@@ -290,7 +290,7 @@ public final class PostcardScreen extends Screen {
         g.fill(21,claspY+5,41,claspY+14,0xFF735439);
         for(int dotX=26;dotX<=34;dotX+=4) g.fill(dotX,claspY+9,dotX+2,claspY+11,0xFFF5DDA2);
         if(bagClaspHit(mouseX,mouseY)) hover="解开袋口，找印章 · Tab";
-        g.pose().pushMatrix();g.pose().translate(width-42,64);g.pose().rotate(-.06f);g.pose().scale(2f,2f);
+        g.pose().pushMatrix();g.pose().translate((float)(cardX+cardW+34),(float)(cardY-26));g.pose().rotate(-.06f);g.pose().scale(2f,2f);
         DeskControls.draw(g,DeskControls.Kind.BOOK,0,0,true);g.pose().popMatrix();
         DeskControls.draw(g,DeskControls.Kind.NEW_PAPER,(int)(cardX+cardW-14),(int)cardY-26,true);
         DeskControls.draw(g,DeskControls.Kind.PLAIN_PAPER,(int)(cardX+cardW-48),(int)cardY-26,card().background()!=null);
@@ -308,7 +308,7 @@ public final class PostcardScreen extends Screen {
         if(!bag.isOpen() && !busy()) HoverHint.draw(g,font,hover.isEmpty() && recent?shortStatus():hover,width,height);
         if(bag!=null && bag.isOpen()) { bag.layout(width,height);bag.render(g,mouseX,mouseY,partialTick,session.album().stamps()); }
     }
-    private boolean bookHit(double x,double y) { return Math.abs(x-(width-42))<=27 && Math.abs(y-64)<=28; }
+    private boolean bookHit(double x,double y) { return Math.abs(x-(cardX+cardW+34))<=27 && Math.abs(y-(cardY-26))<=28; }
     private boolean bagClaspHit(double x,double y) { return x>=0 && x<64 && bagY(y)>=0 && bagY(y)<36; }
     private void openBag() {
         collectionTag.close();

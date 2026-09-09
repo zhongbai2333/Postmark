@@ -37,7 +37,7 @@ public final class BookSmoke {
     private static void next() {int bw=Math.min(600,book.width-64),bh=Math.min(346,book.height-82);book.mouseClicked(mouse((book.width+bw)/2-20,(book.height-bh)/2-4+bh+18),false);}
     private static void open() throws Exception {
         var v=PaperViewport.fit(desk.width,desk.height,ClientSession.get().album().selected().aspectRatio());
-        desk.mouseClicked(mouse(desk.width-42,64),false);
+        desk.mouseClicked(mouse(v.x()+v.width()+34,v.y()-26),false);
         if(!(Minecraft.getInstance().screen instanceof PostcardAlbumScreen result)) throw new AssertionError("Desk book control failed");book=result;
     }
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
