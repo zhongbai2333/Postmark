@@ -1,0 +1,77 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.140'
+}
+version = '0.1.0-alpha.9'
+group = 'dev.postmark'
+base { archivesName = 'postmark-26.1.2' }
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+neoForge {
+    version = '26.1.2.75'
+    runs {
+        client {
+            client()
+            if (project.hasProperty('smokeTest')) {
+                gameDirectory = file('run-smoke')
+                systemProperty 'postmark.smoke', 'true'
+                programArgument '--width'
+                programArgument '1440'
+                programArgument '--height'
+                programArgument '900'
+            }
+        }
+    }
+    mods {
+        postmark { sourceSet sourceSets.main }
+    }
+}
+repositories { mavenCentral() }
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'com.google.code.gson:gson:2.13.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.named('test', Test) { useJUnitPlatform() }
+tasks.named('processResources') {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/neoforge.mods.toml') { expand version: project.version }
+}
+if (project.hasProperty('smokeTest')) { sourceSets.main.java.srcDir 'src/smoke/java' }
+if (project.hasProperty('compatSmoke')) {
+    sourceSets.main.java.srcDir 'src/compatSmoke/java'
+    sourceSets.main.resources.srcDir 'src/compatSmoke/resources'
+    dependencies { implementation files('local/exhibition_portal-1.1.12.jar') }
+    neoForge.runs.client {
+        gameDirectory = file('run-compat-smoke')
+        systemProperty 'postmark.compatSmoke', 'true'
+        programArgument '--width'
+        programArgument '1440'
+        programArgument '--height'
+        programArgument '900'
+    }
+}
+tasks.named('jar') {
+    exclude 'dev/postmark/smoke/**', 'dev/postmark/compatsmoke/**'
+    exclude 'assets/exhibition_portal/**', 'data/exhibition_portal/**'
+    doFirst {
+        if (project.hasProperty('smokeTest') || project.hasProperty('compatSmoke')) {
+            throw new GradleException('Build the release jar without smokeTest or compatSmoke.')
+        }
+    }
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+tasks.named('jar') { from('LICENSE', 'THIRD_PARTY_NOTICES.md') }
+tasks.named('sourcesJar') {
+    from('LICENSE', 'THIRD_PARTY_NOTICES.md')
+    exclude 'dev/postmark/smoke/**', 'dev/postmark/compatsmoke/**'
+    exclude 'assets/exhibition_portal/**', 'data/exhibition_portal/**'
+}

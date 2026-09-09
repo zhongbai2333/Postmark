@@ -1,0 +1,47 @@
+package dev.postmark.render;
+
+import java.awt.Graphics2D;
+import java.util.Map;
+
+/** Small original 5x7 bitmap alphabet; no platform font or smoothing. */
+final class PixelFont {
+    private static final Map<Character,String> GLYPHS=Map.ofEntries(
+        Map.entry('A',"01110/10001/10001/11111/10001/10001/10001"),
+        Map.entry('B',"11110/10001/10001/11110/10001/10001/11110"),
+        Map.entry('C',"01111/10000/10000/10000/10000/10000/01111"),
+        Map.entry('D',"11110/10001/10001/10001/10001/10001/11110"),
+        Map.entry('E',"11111/10000/10000/11110/10000/10000/11111"),
+        Map.entry('F',"11111/10000/10000/11110/10000/10000/10000"),
+        Map.entry('G',"01111/10000/10000/10111/10001/10001/01111"),
+        Map.entry('H',"10001/10001/10001/11111/10001/10001/10001"),
+        Map.entry('I',"11111/00100/00100/00100/00100/00100/11111"),
+        Map.entry('J',"00111/00010/00010/00010/10010/10010/01100"),
+        Map.entry('K',"10001/10010/10100/11000/10100/10010/10001"),
+        Map.entry('L',"10000/10000/10000/10000/10000/10000/11111"),
+        Map.entry('M',"10001/11011/10101/10101/10001/10001/10001"),
+        Map.entry('N',"10001/11001/11001/10101/10011/10011/10001"),
+        Map.entry('O',"01110/10001/10001/10001/10001/10001/01110"),
+        Map.entry('P',"11110/10001/10001/11110/10000/10000/10000"),
+        Map.entry('Q',"01110/10001/10001/10001/10101/10010/01101"),
+        Map.entry('R',"11110/10001/10001/11110/10100/10010/10001"),
+        Map.entry('S',"01111/10000/10000/01110/00001/00001/11110"),
+        Map.entry('T',"11111/00100/00100/00100/00100/00100/00100"),
+        Map.entry('U',"10001/10001/10001/10001/10001/10001/01110"),
+        Map.entry('V',"10001/10001/10001/10001/10001/01010/00100"),
+        Map.entry('W',"10001/10001/10001/10101/10101/10101/01010"),
+        Map.entry('X',"10001/10001/01010/00100/01010/10001/10001"),
+        Map.entry('Y',"10001/10001/01010/00100/00100/00100/00100"),
+        Map.entry('Z',"11111/00001/00010/00100/01000/10000/11111")
+    );
+    static void draw(Graphics2D g,String text,int x,int y,int scale) {
+        for(char ch:text.toUpperCase(java.util.Locale.ROOT).toCharArray()) {
+            String bitmap=GLYPHS.get(ch);
+            if(bitmap!=null) {
+                String[] rows=bitmap.split("/");
+                for(int row=0;row<7;row++) for(int col=0;col<5;col++)
+                    if(rows[row].charAt(col)=='1') g.fillRect(x+col*scale,y+row*scale,scale,scale);
+            }
+            x+=6*scale;
+        }
+    }
+}

@@ -1,0 +1,15 @@
+.gradle/
+build/
+run/
+.idea/
+*.iml
+.vscode/
+local/
+run-*/
+local-*.log
+
+# Local assistant / IDE activity records
+.github/modernize/
+*.log
+.DS_Store
+Thumbs.db

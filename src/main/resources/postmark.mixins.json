@@ -1,0 +1,8 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.postmark.compat.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": ["StampingCounterMixin"],
+  "injectors": { "defaultRequire": 1 }
+}
