@@ -222,4 +222,42 @@ class PostcardTest {
         assertTrue(70+120*68-scroll.position()<=386);
         scroll.reveal(70,55,386);scroll.advance(6000);assertEquals(0,scroll.position());
     }
+    @Test void progressCountsUniqueCollectedIdentitiesAndSeparatesKinds() {
+        var a=new StampDefinition("a/visitor","A","shared",false);
+        var b=new StampDefinition("a/expert","A","shared",false);
+        var c=new StampDefinition("b/special","B","shared",false);
+        var practice=new StampDefinition("practice:0","启程","shared",true);
+        var ticket=new StampDefinition("postmark:milestone/10","10","shared",true);
+        var progress=CollectionProgress.from(List.of(a,b,c,a,practice,ticket));
+        assertEquals(new CollectionProgress(3,1,1,1,2),progress);
+    }
+    @Test void punchCardsAndMilestonesHaveCorrectBoundaries() {
+        assertEquals(0,new CollectionProgress(0,0,0,0,0).holes());
+        assertEquals(10,new CollectionProgress(0,0,0,0,0).target());
+        for(int count=1;count<=4096;count++) {
+            var progress=new CollectionProgress(count,count,0,0,count);
+            assertTrue(progress.holes()>=1 && progress.holes()<=10);
+            assertEquals((count+9)/10*10,progress.target());
+            assertEquals(count/10*10,progress.milestone());
+            assertFalse(progress.unlocks(progress.milestone()+10));
+        }
+        assertEquals(10,new CollectionProgress(10,10,0,0,10).holes());
+        assertEquals(1,new CollectionProgress(11,11,0,0,11).holes());
+        assertFalse(new CollectionProgress(9,9,0,0,9).unlocks(10));
+    }
+    @Test void earnedTicketIsAStoredPaperDecorationNotACollectedStamp() throws Exception {
+        var image=dev.postmark.render.MilestoneTicketPainter.paint(30);
+        assertEquals(0,image.getRGB(0,0)>>>24);
+        assertNotEquals(0,image.getRGB(80,80)>>>24);
+        assertThrows(IllegalArgumentException.class,()->dev.postmark.render.MilestoneTicketPainter.paint(15));
+        var store=new AlbumStore(temporary,"ticket-test");var base=Album.empty();
+        String asset=store.putImage(image);
+        var card=base.selected().stamp("postmark:milestone/30",asset,.6,.7,.28,0);
+        store.save(base.replace(card));
+        assertEquals(card,store.load().selected());
+        assertEquals(0,CollectionProgress.from(store.load().stamps()).total());
+        var painted=PostcardPainter.paint(card,store::image);
+        var blank=PostcardPainter.paint(base.selected(),store::image);
+        assertNotEquals(blank.getRGB(1080,840),painted.getRGB(1080,840));
+    }
 }

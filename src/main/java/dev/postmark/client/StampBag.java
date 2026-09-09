@@ -29,7 +29,7 @@ public final class StampBag {
         this.font=font;this.painter=painter;this.take=take;
         search=new EditBox(font,0,0,200,18,Component.literal("搜索袋里的章"));
         search.setMaxLength(100);search.setBordered(false);search.setTextColor(0xFFF1E5CA);
-        search.setTextShadow(false);search.setHint(Component.literal("输入展区名称，把章找出来…"));
+        search.setTextShadow(false);search.setHint(Component.literal("搜索展区"));
         search.setResponder(value->{starts.clear();starts.putAll(shown);query=value;panX=panY=0;changedAt=now();});
         search.setVisible(false);
     }
@@ -107,7 +107,7 @@ public final class StampBag {
         }
         g.fill(x+28,y+20,x+w-60,y+46,0xFF654D36);
         g.fill(x+30,y+22,x+w-62,y+24,0xFFB99362);
-        if(query.isEmpty() && search.isFocused()) g.text(font,Component.literal("写下展区名，把章找出来…"),search.getX()+8,search.getY(),0xFFAD9676,false);
+        if(query.isEmpty() && search.isFocused()) g.text(font,Component.literal("搜索展区"),search.getX()+8,search.getY(),0xFFAD9676,false);
         g.fill(x+34,y+29,x+40,y+35,0xFFCBB184);g.fill(x+35,y+30,x+39,y+34,0xFF654D36);g.fill(x+39,y+35,x+43,y+38,0xFFCBB184);
         search.extractRenderState(g,mx,my,partial);
         g.text(font,Component.literal("×"),x+w-39,y+29,0xFFF3DFC0,false);
@@ -150,10 +150,14 @@ public final class StampBag {
         g.fill(x+13,y+h-34,x+w-13,y+h-14,0xFF946B45);
         g.fill(x+13,y+h-34,x+w-13,y+h-30,0xFFC49B67);
         for(int sx=x+22;sx<x+w-20;sx+=9) g.fill(sx,y+h-20,sx+4,y+h-18,0xFFE0BB82);
-        String note=hovered!=null?hovered.name():filtering?(found.isEmpty()?"没有找到，换个名称试试":"从袋里找出了 "+found.size()+" 枚章"):
-                ordered.size()+" 枚章 · 指向放大 · 点击拿起 · 空隙拖动 · 滚轮缩放";
-        if(font.width(note)>w-32) note=font.plainSubstrByWidth(note,w-44)+"…";
-        g.centeredText(font,Component.literal(note),x+w/2,y+h+15,0xFFF0E2C4);
+        g.centeredText(font,Component.literal((filtering?found.size():ordered.size())+" 枚"),x+w/2,y+h-28,0xFFF0E2C4);
+        String hint="";
+        if(hovered!=null) hint=hovered.name()+" · 点击拿起，或拖出盖印";
+        else if(inside(mx,my)) hint=filtering?"匹配的章已浮出 · 拖动或滚轮浏览":"指向章面放大 · 空隙或右键拖动 · 滚轮缩放";
+        if(my>=y+18 && my<y+50 && mx>=x+28 && mx<x+w-60) hint="按展区、章名或类型搜索；空格分隔多个条件";
+        if(my>=y+18 && my<y+50 && mx>x+w-86 && mx<x+w-65 && !query.isEmpty()) hint="清除搜索";
+        if(my>=y+18 && my<y+50 && mx>x+w-50 && mx<x+w-20) hint="收起章袋 · Esc";
+        HoverHint.draw(g,font,hint,x*2+w,y*2+h);
     }
     private void drawFace(GuiGraphicsExtractor g,StampDefinition s,StampDefinition hovered,double dt,double size,float opacity) {
         double scale=hoverScale.getOrDefault(s.key(),1.0),target=s.equals(hovered)?1.65:1;

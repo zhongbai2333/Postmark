@@ -22,7 +22,8 @@ public final class SignatureScreen extends Screen {
     private double x,y,w,h;
     private long opened;
     private int serial;
-    private String message="按住左键签名 · Ctrl+Z 撤回 · Delete 清空";
+    private String message="",detail="";
+    private long messageAt;
     private final List<Action> actions=new ArrayList<>();
     private record Action(int x,int y,int w,String label,Runnable run) {
         boolean hit(double mx,double my) { return mx>=x && mx<x+w && my>=y && my<y+22; }
@@ -88,8 +89,22 @@ public final class SignatureScreen extends Screen {
             g.fill(bx-10,by-13,bx+8,by+8,0xFFCCBD9D); g.fill(bx-8,by-15,bx+10,by+5,0xFFF0E8D2);
             g.text(font,"<",bx-3,by-9,0xFF79694E,false);
             actions.add(new Action(bx-14,by-16,30,"return",this::onClose));
-            String hint=Math.abs(mx-sx)<21 && Math.abs(my-sy)<21?"签好，保存并寄出":message;
-            g.centeredText(font,Component.literal(font.plainSubstrByWidth(hint,width-32)),width/2,height-16,0xFFECE8D7);
+            int ux=(int)x-32,uy=(int)(y+h)-86,cy=(int)(y+h)-48;
+            boolean hasInk=!current.isEmpty() || !card().signature().isEmpty();
+            DeskControls.draw(g,DeskControls.Kind.UNDO,ux,uy,hasInk);
+            DeskControls.draw(g,DeskControls.Kind.CLEAR,ux,cy,hasInk);
+            actions.add(new Action(ux-13,uy-11,26,"undo",this::undo));
+            actions.add(new Action(ux-13,cy-11,26,"clear",()->{if(replace(List.of())) current.clear();}));
+            String hint=inside(mx,my)?"按住左键签名；每笔松开后自动保存":"";
+            for(var action:actions) if(action.hit(mx,my)) hint=switch(action.label) {
+                case "send" -> "保存并寄出 · 签名可留白";
+                case "return" -> "返回明信片，保留签名 · Esc";
+                case "undo" -> "撤回上一笔 · Ctrl+Z";
+                case "clear" -> "清空签名 · Delete";
+                default -> "";
+            };
+            if(my>=height-26 && Math.abs(mx-width/2)<120 && !detail.isEmpty()) hint=detail;
+            HoverHint.draw(g,font,hint.isEmpty() && now()-messageAt<3500?message:hint,width,height);
         }
     }
     private static void drawStroke(GuiGraphicsExtractor g,List<InkPoint> points,int color,double weight,double left,double top,double cw,double ch) {
@@ -132,10 +147,10 @@ public final class SignatureScreen extends Screen {
         return false;
     }
     private boolean replace(List<InkStroke> strokes) {
-        try { session.update(session.album().replace(card().withSignature(strokes))); message="签名已保存 · 点右侧封蜡寄出 · Ctrl+Z 撤回"; return true; }
+        try { session.update(session.album().replace(card().withSignature(strokes))); message="已保存";detail="";messageAt=now(); return true; }
         catch(Exception e) { error(e); return false; }
     }
-    private void error(Exception e) { message="保存失败，请重试："+e.getMessage(); dev.postmark.Postmark.LOGGER.warn("Signature operation failed",e); }
+    private void error(Exception e) { message="保存失败";detail="保存失败，签名保留："+e.getMessage();messageAt=now(); dev.postmark.Postmark.LOGGER.warn("Signature operation failed",e); }
     private void undo() {
         if(!current.isEmpty()) { current.clear(); return; }
         var strokes=card().signature(); if(!strokes.isEmpty()) replace(strokes.subList(0,strokes.size()-1));
@@ -146,7 +161,7 @@ public final class SignatureScreen extends Screen {
         for(var a:actions) if(a.hit(e.x(),e.y())) { if(!finish()) return true; a.run.run(); return true; }
         if(inside(e.x(),e.y())) {
             if(!finish()) return true;
-            if(card().signature().size()>=Postcard.MAX_STROKES) { message="笔画已满，请撤回或清空后再写"; return true; }
+            if(card().signature().size()>=Postcard.MAX_STROKES) { message="笔画已满";detail="笔画已满；点击撤回或清空后继续";messageAt=now(); return true; }
             append(e.x(),e.y()); return true;
         }
         return false;

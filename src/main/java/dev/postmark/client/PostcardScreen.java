@@ -45,10 +45,11 @@ public final class PostcardScreen extends Screen {
     private double angle, toolX, toolY;
     private final SmoothShelfScroll shelfScroll=new SmoothShelfScroll();
     private StampBag bag;
+    private CollectionTag collectionTag;
     private boolean bagPickup;
     private double cardX, cardY, cardW, cardH;
     private String status="";
-    private long statusAt;
+    private long statusAt,lastCollectionSound;
     private PendingStamp pressing;
     private long sendAt;
     private long flyAt;
@@ -80,6 +81,8 @@ public final class PostcardScreen extends Screen {
         layout();
         if(bag==null) bag=new StampBag(font,this::drawBagFace,this::takeFromBag);
         bag.layout(width,height);addWidget(bag.search);
+        if(collectionTag==null) collectionTag=new CollectionTag(font,this::takeMilestoneTicket);
+        collectionTag.layout(width,height);collectionTag.sync(session.album().stamps());
         if(bag.isOpen()) setFocused(bag.search);
         if(dragging) previewTimer.reset(toolX,toolY,angle,now());
         if(canvas==null) try { refresh(); } catch(Exception e) { fail(e); }
@@ -183,7 +186,7 @@ public final class PostcardScreen extends Screen {
     @Override public void extractRenderState(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {
         layout();
         g.fill(0,0,width,height,0x58303D35);
-        if(packing || exporting) { drawSend(g); return; }
+        if(packing || exporting) { drawSend(g,mouseX,mouseY); return; }
         // A stitched leather roll stays at the left edge; empty loops remain after tools are lifted.
         g.pose().pushMatrix(); g.pose().translate(0,bagOffset()); g.pose().scale(UI_SCALE,UI_SCALE);
         int bagTop=24,bagBottom=height-36;
@@ -247,7 +250,13 @@ public final class PostcardScreen extends Screen {
             }
             drawEraser(g,toolX,toolY,true);
         }
+        collectionTag.layout(width,height);collectionTag.render(g,mouseX,mouseY);
         for(var r:returning) { double t=ease((now()-r.start)/(double)r.duration);
+            if(isTicket(r.stamp)) {
+                double tx=collectionTag.anchorX(),ty=collectionTag.anchorY();
+                drawTool(g,r.stamp,r.x+(tx-r.x)*t,r.y+(ty-r.y)*t-Math.sin(Math.PI*t)*18,r.angle*(1-t),(int)(r.size*cardW*(1-t)+30*t),1,(float)(1-t*.7));
+                continue;
+            }
             int index=0;
             for(int i=0;i<session.album().stamps().size();i++) if(session.album().stamps().get(i).key().equals(r.stamp.key())) { index=i;break; }
             double targetX=38*UI_SCALE,targetY=bagOffset()+(70+index*68-shelfScroll.position())*UI_SCALE;
@@ -277,17 +286,38 @@ public final class PostcardScreen extends Screen {
         g.fill(21,claspY+5,41,claspY+14,0xFF735439);
         for(int dotX=26;dotX<=34;dotX+=4) g.fill(dotX,claspY+9,dotX+2,claspY+11,0xFFF5DDA2);
         if(bagClaspHit(mouseX,mouseY)) hover="解开袋口，找印章 · Tab";
-        String note=!status.isEmpty() && now()-statusAt<4500?status:hover;
-        if(note.isEmpty() && now()-openedAt<8000) note="Tab 解开章袋 · 右键拖动调大小 · E 橡皮 · N 新信纸 · F 保存目录";
-        if(!note.isEmpty() && !busy()) g.centeredText(font,Component.literal(note),width/2,height-16,0xFFECE8D7);
+        DeskControls.draw(g,DeskControls.Kind.NEW_PAPER,(int)(cardX+cardW-14),(int)cardY-26,true);
+        DeskControls.draw(g,DeskControls.Kind.PLAIN_PAPER,(int)(cardX+cardW-48),(int)cardY-26,card().background()!=null);
+        DeskControls.draw(g,DeskControls.Kind.FOLDER,(int)(cardX+cardW+32),(int)(cardY+cardH-54),true);
+        DeskControls.draw(g,DeskControls.Kind.CLOSE,width-22,22,true);
+        if(hover.isEmpty() && overCard(mouseX,mouseY)) hover=dragging?(isTicket(tool)?"左键放下纪念票 · 右键拖动调大小 · 滚轮旋转":"左键盖印 · 右键拖动调大小 · 滚轮旋转"):erasing?"点击擦除最上层印迹":"拖入 PNG/JPG 更换底片";
+        String tagHint=collectionTag.hint(mouseX,mouseY);if(!tagHint.isEmpty() && !dragging && !erasing) hover=tagHint;
+        if(DeskControls.hit(mouseX,mouseY,cardX+cardW-14,cardY-26)) hover="新建信纸 · N";
+        if(DeskControls.hit(mouseX,mouseY,cardX+cardW-48,cardY-26)) hover="恢复素色信纸 · B";
+        if(DeskControls.hit(mouseX,mouseY,cardX+cardW+32,cardY+cardH-54)) hover="打开导出目录 · F";
+        if(DeskControls.hit(mouseX,mouseY,width-22,22)) hover="收起明信片 · Esc";
+        boolean recent=!status.isEmpty() && now()-statusAt<4500;
+        if(recent && mouseY>=height-26 && Math.abs(mouseX-width/2)<120) hover=status;
+        if(!bag.isOpen() && !busy()) HoverHint.draw(g,font,hover.isEmpty() && recent?shortStatus():hover,width,height);
         if(bag!=null && bag.isOpen()) { bag.layout(width,height);bag.render(g,mouseX,mouseY,partialTick,session.album().stamps()); }
     }
     private boolean bagClaspHit(double x,double y) { return x>=0 && x<64 && bagY(y)>=0 && bagY(y)<36; }
     private void openBag() {
+        collectionTag.close();
         if(dragging) returnTool(toolX,toolY);
         erasing=false;bag.open(session.album().stamps());setFocused(bag.search);
     }
     public StampBag stampBag() { return bag; }
+    public CollectionTag collectionTag() { return collectionTag; }
+    private static boolean isTicket(StampDefinition stamp) { return stamp.key().startsWith("postmark:milestone/"); }
+    private void takeMilestoneTicket(int milestone) {
+        if(!collectionTag.progress().unlocks(milestone)) return;
+        edit(()->{
+            String asset=session.store().putImage(dev.postmark.render.MilestoneTicketPainter.paint(milestone));
+            takeFromBag(new StampDefinition("postmark:milestone/"+milestone,"纪念票 · "+milestone,asset,true));
+            toolSize=.28;
+        });
+    }
     private void takeFromBag(StampDefinition stamp) {
         revealShelfStamp(stamp);
         setFocused(null);tool=stamp;returning.removeIf(r->r.stamp.key().equals(stamp.key()));
@@ -315,8 +345,13 @@ public final class PostcardScreen extends Screen {
             blitAlpha(g,id,-(int)size/2,-(int)size/2,(int)size,(int)size,opacity);g.pose().popMatrix();
         } catch(IOException ignored) {}
     }
-    private long openedAt=now();
+    private String shortStatus() {
+        if(status.contains("失败") || status.contains("不可用") || status.contains("超时")) return "未完成";
+        if(status.contains("已保存") || status.contains("saved") || status.contains("saved.")) return "已保存";
+        return "·";
+    }
     private void revealShelfStamp(StampDefinition stamp) {
+        if(isTicket(stamp)) return;
         updateShelfBounds();
         int index=0;
         for(int i=0;i<session.album().stamps().size();i++) if(session.album().stamps().get(i).key().equals(stamp.key())) { index=i;break; }
@@ -347,6 +382,11 @@ public final class PostcardScreen extends Screen {
         drawTool(g,stamp,x,y,angle,size,press,1f);
     }
     private void drawTool(GuiGraphicsExtractor g,StampDefinition stamp,double x,double y,double angle,int size,double press,float opacity) {
+        if(isTicket(stamp)) {
+            g.pose().pushMatrix();g.pose().translate((float)x,(float)y);g.pose().rotate((float)angle);
+            try { blitAlpha(g,texture(stamp.asset()),-size/2,-size/2-(int)(4*(1-press)),size,size,opacity); } catch(IOException ignored) {}
+            g.pose().popMatrix();return;
+        }
         String key="tool/"+stamp.asset()+"/"+stamp.expert();
         Identifier id=textures.get(key);
         try {
@@ -381,7 +421,18 @@ public final class PostcardScreen extends Screen {
     @Override public boolean mouseClicked(MouseButtonEvent e,boolean twice) {
         if(busy()) return true;
         if(bag.isOpen()) { toolX=e.x();toolY=e.y();return bag.click(e); }
+        if(!dragging && !erasing) {
+            toolX=e.x();toolY=e.y();
+            if(collectionTag.click(e)) return true;
+            if(collectionTag.isOpen()) collectionTag.close();
+        }
         if(e.button()==0 && bagClaspHit(e.x(),e.y())) { openBag();return true; }
+        if(e.button()==0 && !resizing) {
+            if(DeskControls.hit(e.x(),e.y(),width-22,22)) { if(dragging) returnTool(toolX,toolY);else onClose();return true; }
+            if(DeskControls.hit(e.x(),e.y(),cardX+cardW-14,cardY-26)) { edit(()->turnTo(session.album().addCard(),1));return true; }
+            if(DeskControls.hit(e.x(),e.y(),cardX+cardW-48,cardY-26)) { edit(()->commit(session.album().replace(card().withBackground(null))));return true; }
+            if(DeskControls.hit(e.x(),e.y(),cardX+cardW+32,cardY+cardH-54)) { Util.getPlatform().openPath(exportDirectory());return true; }
+        }
         if(e.button()==GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
             if(dragging) { resizing=true;resizeX=e.x();resizeY=e.y();resizeSize=toolSize; }
             else erasing=false;
@@ -465,6 +516,7 @@ public final class PostcardScreen extends Screen {
             if(e.key()==GLFW.GLFW_KEY_ESCAPE || e.key()==GLFW.GLFW_KEY_TAB) { bag.close();setFocused(null);return true; }
             bag.search.setFocused(true);setFocused(bag.search);bag.search.keyPressed(e);return true;
         }
+        if(e.key()==GLFW.GLFW_KEY_ESCAPE && collectionTag.isOpen()) { collectionTag.close();return true; }
         if(e.key()==GLFW.GLFW_KEY_TAB && !busy()) { openBag();return true; }
         if(e.key()==GLFW.GLFW_KEY_ESCAPE && (dragging || erasing)) { if(dragging) returnTool(toolX,toolY); erasing=false; return true; }
         if(busy()) return true;
@@ -476,6 +528,9 @@ public final class PostcardScreen extends Screen {
         return super.keyPressed(e);
     }
     @Override public void tick() {
+        if(collectionTag!=null && collectionTag.sync(session.album().stamps()) && now()-lastCollectionSound>=220) {
+            lastCollectionSound=now();minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(),1.6f,.2f));
+        }
         if(cardTurn!=null && now()-cardTurn.start>=560) finishTurn();
         if(pressing!=null) {
             long elapsed=now()-pressing.start;
@@ -540,7 +595,7 @@ public final class PostcardScreen extends Screen {
         if(sendCanvas!=null) { if(!sendCanvas.equals(canvas)) minecraft.getTextureManager().release(sendCanvas); sendCanvas=null; }
     }
     private static double ease(double x) { x=Math.clamp(x,0,1); return x*x*(3-2*x); }
-    private void drawSend(GuiGraphicsExtractor g) {
+    private void drawSend(GuiGraphicsExtractor g,int mouseX,int mouseY) {
         double elapsed=now()-sendAt;
         double slide=ease((elapsed-200)/1050), fold=ease((elapsed-1350)/500);
         double flight=flyAt==0?0:ease((now()-flyAt)/1000.0);
@@ -554,7 +609,8 @@ public final class PostcardScreen extends Screen {
             g.fill(x+4,y+5,x+w+4,y+h+5,0x3030271D);
             if(sendCanvas!=null) blit(g,sendCanvas,x,y,w,h);
             g.pose().popMatrix();
-            g.centeredText(font,Component.literal(exported==null?"正在保存明信片与签名信封…":"已保存，寄出这份回忆"),width/2,height-24,0xFFECE8D7);
+            String sendHint=mouseX>=x && mouseX<=x+w && mouseY>=y && mouseY<=y+h?"保存明信片和签名信封；成功后打开文件夹并换新卡":exported==null?"保存中":"已保存";
+            HoverHint.draw(g,font,sendHint,width,height);
             return;
         }
         g.fill(x+5,y+h+3,x+w+7,y+h+9,0x153A372B);

@@ -33,3 +33,11 @@
 ## 可选联动
 
 `SignMeUpBridge` 通过可选 Mixin 重定向客户端编辑入口，保留服务器授章。仅在新服务端快照确认后同步地图位置；图片异步回调核对会话与连接，避免跨服务器归档。详情见 [COMPATIBILITY.md](COMPATIBILITY.md)。
+
+## 收藏进度与提示
+
+`CollectionProgress` 从已持久化的收藏按 key 去重，排除 practice；精确识别 visitor/expert，按展区前缀统计展馆。不推算全服总章数。`CollectionTag` 翻面展示十孔里程碑，新增收藏更新计数与轻提示音。
+
+`MilestoneTicketPainter` 生成原创像素纪念票，通过已有图像资源和 Imprint 流程保存、擦除、缩放和导出；票不加入收藏列表，也不修改草稿格式。
+
+`HoverHint` 统一在底部显示当前鼠标目标的说明。`DeskControls` 绘制无常驻长文字的像素操作控件，键盘快捷键与鼠标操作共享原有编辑流程。

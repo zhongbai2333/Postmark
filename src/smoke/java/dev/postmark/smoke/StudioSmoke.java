@@ -121,10 +121,11 @@ public class StudioSmoke {
                 shot="06-signature.png";
             }
             if(t==274) {
-                mc.screen.keyPressed(new KeyEvent(90,0,2));
+                var corner=point(0,1);
+                mc.screen.mouseClicked(mouse(corner[0]-32,corner[1]-86),false);
                 if(!ClientSession.get().album().selected().signature().isEmpty()) throw new AssertionError("Undo did not remove last stroke");
                 sign((SignatureScreen)mc.screen);
-                mc.screen.keyPressed(new KeyEvent(261,0,0));
+                mc.screen.mouseClicked(mouse(corner[0]-32,corner[1]-48),false);
                 if(!ClientSession.get().album().selected().signature().isEmpty()) throw new AssertionError("Clear did not remove signature");
                 sign((SignatureScreen)mc.screen);
             }
@@ -321,6 +322,64 @@ public class StudioSmoke {
                 ClientSession.get().update(bagBaseline);screen.onClose();ClientSession.clear();
                 if(!ClientSession.get().album().equals(bagBaseline)) throw new AssertionError("Bag fixture cleanup changed the album");
                 Files.writeString(mc.gameDirectory.toPath().resolve("smoke-result.txt"),"PASS: 121-stamp honeycomb pile; stable hover magnification; Chinese name search selects a visitor/expert pair; combined query selects one master; search does not invoke editor shortcuts; click pickup holds without accidental imprint; slow drag pickup stamps correct artwork; no-match results cannot select the dim pile; zoom and Escape; taking from bag and returning reveal the actual shelf slot; all alpha.7 postcard, resize, erase, signature, export and return regressions passed.");
+                // Begin a fresh, isolated collection for milestone and mouse-only controls.
+                var session=ClientSession.get();var fresh=dev.postmark.model.Album.empty();
+                var practice=session.album().stamps().getFirst();
+                var next=fresh.unlock(practice);
+                for(int i=0;i<9;i++) next=next.unlock(new dev.postmark.model.StampDefinition("progress-"+i+"/visitor","测试馆"+i,practice.asset(),false));
+                session.update(next);screen=new PostcardScreen(null,session,null);mc.setScreen(screen);
+                if(screen.collectionTag().progress().total()!=9) throw new AssertionError("Tag must exclude practice stamps");
+            }
+            if(t==645) {
+                screen.mouseClicked(mouse(100,screen.height-60),false);screen.mouseReleased(mouse(100,screen.height-60));
+            }
+            if(t==653) {
+                if(!screen.collectionTag().isOpen() || screen.collectionTag().progress().holes()!=9) throw new AssertionError("Tag flip or nine-hole progress failed");
+                shot="25-collection-tag.png";
+            }
+            if(t==657) {
+                var session=ClientSession.get();String asset=session.album().stamps().getFirst().asset();
+                session.update(session.album().unlock(new dev.postmark.model.StampDefinition("progress-0/expert","测试馆0",asset,false)));
+            }
+            if(t==665) {
+                var progress=screen.collectionTag().progress();
+                if(progress.total()!=10 || progress.visitors()!=9 || progress.experts()!=1 || progress.venues()!=9 || progress.holes()!=10 || !progress.unlocks(10)) throw new AssertionError("New master stamp did not complete milestone");
+                shot="26-milestone-ticket.png";
+            }
+            if(t==668) {
+                screen.mouseClicked(mouse(172,screen.height-60),false);screen.mouseReleased(mouse(172,screen.height-60));
+                if(!ClientSession.get().album().selected().imprints().isEmpty()) throw new AssertionError("Picking ticket must not place it");
+                var pos=point(.6,.7);screen.mouseMoved(pos[0],pos[1]);screen.mouseClicked(mouse(pos[0],pos[1]),false);screen.mouseReleased(mouse(pos[0],pos[1]));
+            }
+            if(t==684) {
+                var session=ClientSession.get();var card=session.album().selected();
+                if(card.imprints().size()!=1 || !card.imprints().getFirst().source().equals("postmark:milestone/10") || screen.collectionTag().progress().total()!=10)
+                    throw new AssertionError("Ticket placement must persist without increasing collection progress");
+                if(!session.store().load().selected().equals(card)) throw new AssertionError("Ticket not saved");
+                var result=dev.postmark.render.PostcardPainter.paint(card,session.store()::image);
+                var baseline=dev.postmark.render.PostcardPainter.paint(card.erase(card.imprints().getFirst().id()),session.store()::image);
+                if(result.getRGB(1080,840)==baseline.getRGB(1080,840)) throw new AssertionError("Ticket missing from export composition");
+                shot="27-ticket-on-postcard.png";
+            }
+            if(t==687) {
+                var top=point(1,0);screen.mouseClicked(mouse(top[0]-14,top[1]-26),false);
+                if(ClientSession.get().album().cards().size()!=2) throw new AssertionError("Visible new-paper control failed");
+            }
+            if(t==703) {
+                var session=ClientSession.get();var card=session.album().selected();
+                session.update(session.album().replace(card.withBackground(session.album().stamps().getFirst().asset())));
+                screen=new PostcardScreen(null,session,null);mc.setScreen(screen);
+                var top=point(1,0);screen.mouseClicked(mouse(top[0]-48,top[1]-26),false);
+                if(session.album().selected().background()!=null) throw new AssertionError("Visible plain-paper control failed");
+                var bottom=point(1,1);screen.mouseClicked(mouse(bottom[0]+32,bottom[1]-54),false);
+                shot="28-mouse-controls.png";
+            }
+            if(t==710) {
+                ClientSession.get().update(bagBaseline);
+                screen.mouseClicked(mouse(screen.width-22,22),false);
+                if(mc.screen==screen) throw new AssertionError("Visible close control failed");
+                ClientSession.clear();if(!ClientSession.get().album().equals(bagBaseline)) throw new AssertionError("Progress test cleanup failed");
+                Files.writeString(mc.gameDirectory.toPath().resolve("smoke-result.txt"),"PASS: numeric tag and punched milestones; counts exclude practice and tickets; new expert updates distinct venue/type counts; earned ticket pickup, placement, save and export composition; visible mouse-only new/plain/folder/close and signature undo/clear controls; prior 121-stamp bag, scrolling, return, resize, preview, signature and export regressions passed.");
                 mc.stop();
             }
         } catch(Throwable e) {
