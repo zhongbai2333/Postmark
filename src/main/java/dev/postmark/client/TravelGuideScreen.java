@@ -165,8 +165,9 @@ public final class TravelGuideScreen extends Screen {
     }
     private List<TravelJournal.KnownStamp> observed(UUID id) {return journal.stamps(id,session.album().stamps());}
     private List<TravelJournal.KnownStamp> stamps(UUID id) {return StampCatalog.bundled().merge(id,observed(id));}
-    private boolean complete(UUID id) {return StampCatalog.bundled().complete(id,observed(id));}
-    public boolean needsInspection(UUID id) {return StampCatalog.bundled().needsInspection(id,journal.entry(id).searched(),observed(id));}
+    private boolean areaSearched(UUID id) {return venues.stream().filter(v->v.id().equals(id)).anyMatch(journal::areaSearched);}
+    private boolean complete(UUID id) {return StampCatalog.bundled().complete(id,observed(id),areaSearched(id));}
+    public boolean needsInspection(UUID id) {return StampCatalog.bundled().needsInspection(id,journal.entry(id).searched(),observed(id),areaSearched(id));}
     private TravelJournal.KnownStamp stamp(UUID id,String kind) {return stamps(id).stream().filter(s->s.id().equals(kind)).findFirst().orElse(null);}
     private void picture(GuiGraphicsExtractor g,GuideVenue venue,int x,int y,int size) {
         Identifier id=Identifier.parse(venue.icon());
@@ -214,10 +215,18 @@ public final class TravelGuideScreen extends Screen {
         g.fill(x-15,y-16,x+19,y+20,0x503D3022);
         g.fill(x-16,y-18,x+16,y+18,0xFF785139);g.fill(x-18,y-16,x+18,y+16,0xFF785139);
         g.fill(x-15,y-16,x+15,y+16,0xFFF3E4BA);g.fill(x-16,y-14,x+16,y+14,0xFFF3E4BA);
-        String[] sole={"01110","11111","11111","11111","01110","01100","01100","00110","00110","00110"};
-        for(int i=0;i<2;i++)for(int row=0;row<sole.length;row++)for(int col=0;col<5;col++)if(sole[row].charAt(col)=='1') {
-            int px=x-12+i*14+col*2,py=y-13+i*7+row*2;g.fill(px,py,px+2,py+2,0xFF80503A);
-        }
+        paw(g,x-7,y+5,1.25f,-.28f,0xFF80503A);
+        paw(g,x+7,y-7,1f,.32f,0xFF986348);
+        g.pose().popMatrix();
+    }
+    private static void paw(GuiGraphicsExtractor g,int x,int y,float scale,float angle,int color) {
+        // Four separate toe beans and a broad pad, staggered like a cat walking across the paper.
+        String[] pixels={"0001100110000","0011100111000","0011100111000","0001000010000",
+                "1100000000011","1110000000111","0110000000110","0000011100000",
+                "0000111110000","0001111111000","0001111111000","0000110110000"};
+        g.pose().pushMatrix();g.pose().translate(x,y);g.pose().rotate(angle);g.pose().scale(scale,scale);
+        for(int row=0;row<pixels.length;row++)for(int col=0;col<13;col++)if(pixels[row].charAt(col)=='1')
+            g.fill(col-6,row-6,col-5,row-5,color);
         g.pose().popMatrix();
     }
     private static void inspectionMark(GuiGraphicsExtractor g,int x,int y) {
@@ -228,12 +237,29 @@ public final class TravelGuideScreen extends Screen {
         for(int row=0;row<mark.length;row++)for(int col=0;col<5;col++)if(mark[row].charAt(col)=='1')
             g.fill(x-5+col*2,y-7+row*2,x-3+col*2,y-5+row*2,0xFF63432D);
     }
-    private static void completeMark(GuiGraphicsExtractor g,int x,int y,int size) {
-        int r=Math.max(10,size/3);g.pose().pushMatrix();g.pose().rotateAbout(-.19f,x,y);
-        for(int dy=-r;dy<=r;dy++)for(int dx=-r;dx<=r;dx++){int d=dx*dx+dy*dy;if(d<=r*r && d>=(r-2)*(r-2))g.fill(x+dx,y+dy,x+dx+1,y+dy+1,0xCF52704B);}
-        for(int i=0;i<=r/2;i++)g.fill(x-r/2+i,y+i*2/3,x-r/2+i+2,y+i*2/3+2,0xDD52704B);
-        for(int i=0;i<=r*2/3;i++)g.fill(x+i,y+r/3-i,x+i+2,y+r/3-i+2,0xDD52704B);
+    private static void completeMark(GuiGraphicsExtractor g,int x,int y) {
+        int r=11;g.pose().pushMatrix();g.pose().rotateAbout(-.15f,x,y);
+        disc(g,x+1,y+2,r+2,0x60413424);
+        disc(g,x,y,r+2,0xFFF7EAC6);
+        disc(g,x,y,r,0xFF356647);
+        disc(g,x,y,r-2,0xFFF6EBD0);
+        int stroke=3;
+        markLine(g,x-6,y,x-2,y+4,stroke);
+        markLine(g,x-2,y+4,x+6,y-5,stroke);
         g.pose().popMatrix();
+    }
+    private static void disc(GuiGraphicsExtractor g,int x,int y,int radius,int color) {
+        for(int row=-radius;row<=radius;row++) {
+            int half=(int)Math.sqrt(radius*radius-row*row);
+            g.fill(x-half,y+row,x+half+1,y+row+1,color);
+        }
+    }
+    private static void markLine(GuiGraphicsExtractor g,int x1,int y1,int x2,int y2,int width) {
+        int steps=Math.max(Math.abs(x2-x1),Math.abs(y2-y1));
+        for(int i=0;i<=steps;i++) {
+            int x=x1+Math.round((x2-x1)*i/(float)steps),y=y1+Math.round((y2-y1)*i/(float)steps);
+            g.fill(x-width/2,y-width/2,x-width/2+width,y-width/2+width,0xFF285638);
+        }
     }
     @Override public void extractBackground(GuiGraphicsExtractor g,int mx,int my,float t) {if(minecraft.level==null)extractPanorama(g,t);extractBlurredBackground(g);}
     @Override public void extractRenderState(GuiGraphicsExtractor g,int mx,int my,float t) {
@@ -250,10 +276,12 @@ public final class TravelGuideScreen extends Screen {
             g.pose().pushMatrix();g.pose().translate(cx,cy);g.pose().scale(k,k);g.pose().translate(-cx,-cy);g.pose().rotateAbout(tile.angle,cx,cy);
             scrap(g,tile,hot);
             var known=stamps(tile.venue.id());
-            if(complete(tile.venue.id())){g.fill(tile.x,tile.y,tile.x+tile.size,tile.y+tile.size,0x50E4D3A5);completeMark(g,tile.x+tile.size/2,tile.y+tile.size/2,tile.size);}
+            boolean done=complete(tile.venue.id());
+            if(done){g.outline(tile.x-3,tile.y-3,tile.size+6,tile.size+6,0xFF356647);g.outline(tile.x-4,tile.y-4,tile.size+8,tile.size+8,0xFF356647);}
             if(journal.entry(tile.venue.id()).searched())footprint(g,tile.x+tile.size-12,tile.y+tile.size-16);
             for(String kind:List.of("visitor","expert")){var s=stamp(tile.venue.id(),kind);if(s!=null)stampPicture(g,s,kind.equals("visitor")?tile.x:tile.x+tile.size,tile.y,24);}
             if(needsInspection(tile.venue.id()))inspectionMark(g,tile.x+tile.size/2,tile.y-16);
+            else if(done)completeMark(g,tile.x+tile.size/2,tile.y-16);
             long extra=known.stream().filter(s->!s.id().equals("visitor")&&!s.id().equals("expert")).count();
             if(extra>0){g.fill(tile.x-8,tile.y+tile.size-10,tile.x+11,tile.y+tile.size+2,0xFFDFC995);g.text(font,Component.literal("+"+extra),tile.x-6,tile.y+tile.size-8,INK,false);}
             g.pose().popMatrix();
@@ -276,7 +304,7 @@ public final class TravelGuideScreen extends Screen {
         String desc=venue.description();if(desc.equals("@unset"))desc="";
         g.text(font,Component.literal(font.plainSubstrByWidth(desc,w-28)),x+14,y+30,0xFF8B866A,false);
         var known=stamps(detail);var preset=StampCatalog.bundled().entry(detail);
-        String note=complete(detail)?(preset==null?"普通与大师均已收集":"清单内已集齐"):journal.entry(detail).searched()?(needsInspection(detail)?"已检索 · 仍有未知章位":"已检索"):"尚未检索";
+        String note=areaSearched(detail)?(complete(detail)?"本地搜索已集齐 · 周边64格":"周边64格已检索"):complete(detail)?(preset==null?"普通与大师均已收集":"清单内已集齐"):journal.entry(detail).searched()?(needsInspection(detail)?"已检索 · 仍有未知章位":"已检索"):"尚未检索";
         if(preset!=null)note+=" · 玩家清单 "+StampCatalog.bundled().date();
         g.text(font,Component.literal(font.plainSubstrByWidth(note,w-28)),x+14,y+46,0xFF7A8164,false);
         detailPage=Math.min(detailPage,Math.max(0,(known.size()-1)/detailCapacity()));
@@ -285,7 +313,7 @@ public final class TravelGuideScreen extends Screen {
             stampPicture(g,s,cx,cy,24);String label=s.id().equals("visitor")?"普通":s.id().equals("expert")?"大师":s.id();
             g.centeredText(font,Component.literal(font.plainSubstrByWidth(label,(w-40)/4-4)),cx,cy+20,s.owned()?INK:0xFF9F967A);
         }
-        if(known.isEmpty())g.centeredText(font,Component.literal(journal.entry(detail).searched()?"尚未发现印章":"等待探索"),x+w/2,y+80,0xFF9B967B);
+        if(known.isEmpty())g.centeredText(font,Component.literal(areaSearched(detail)?"周边未发现印章":journal.entry(detail).searched()?"尚未发现印章":"等待探索"),x+w/2,y+80,0xFF9B967B);
         if(known.size()>detailCapacity()){arrow(g,-1,x+18,y+h-18,detailPage>0);arrow(g,1,x+w-18,y+h-18,(detailPage+1)*detailCapacity()<known.size());}
         g.fill(x+w/2-45,y+h-28,x+w/2+45,y+h-7,venue.canTeleport()?0xFF6A7C56:0xFFB4B096);
         g.centeredText(font,Component.literal(venue.canTeleport()?"前往展馆":"未设置传送点"),x+w/2,y+h-22,0xFFF7EED6);
@@ -310,6 +338,7 @@ public final class TravelGuideScreen extends Screen {
             double cx=t.x+t.size/2.0,cy=t.y+t.size/2.0,k=hoverScale(t.venue.id());
             var local=t.local(cx+(wx-cx)/k,cy+(wy-cy)/k);double tx=local[0],ty=local[1];
             if(needsInspection(t.venue.id()) && Math.abs(tx-(t.x+t.size/2.0))<=12 && Math.abs(ty-(t.y-16))<=15)return new Hit("inspection",t.venue.id(),null);
+            if(!needsInspection(t.venue.id()) && complete(t.venue.id()) && Math.abs(tx-(t.x+t.size/2.0))<=14 && Math.abs(ty-(t.y-16))<=15)return new Hit("complete",t.venue.id(),null);
             if(journal.entry(t.venue.id()).searched() && Math.abs(tx-(t.x+t.size-12))<=18 && Math.abs(ty-(t.y+t.size-16))<=18)return new Hit("footprint",t.venue.id(),null);
             for(String kind:List.of("visitor","expert"))if(stamp(t.venue.id(),kind)!=null && Math.abs(tx-(kind.equals("visitor")?t.x:t.x+t.size))<=17&&ty>=t.y-25&&ty<=t.y+17)return new Hit("stamp",t.venue.id(),kind);
             boolean extra=stamps(t.venue.id()).stream().anyMatch(s->!s.id().equals("visitor")&&!s.id().equals("expert"));
@@ -326,7 +355,8 @@ public final class TravelGuideScreen extends Screen {
             case "travel" -> venue!=null?(venue.canTeleport()?"前往 "+venue.name():"这个展馆尚未设置传送点"):"";
             case "details" -> "查看展馆介绍";
             case "inspection" -> journal.entry(hit.venue).searched()?"已检索，仍有章位未确认 · 点击查看":"章位尚未检索 · 点击查看";
-            case "footprint" -> "已进行区块检索 · 点击查看结果";
+            case "complete" -> "已知章已集齐 · 点击查看";
+            case "footprint" -> "猫猫踩过啦 · 已检索，点击查看";
             case "stamp" -> {var s=stamp(hit.venue,hit.stamp);yield s==null?"":(s.id().equals("visitor")?"普通章":s.id().equals("expert")?"大师章":s.id())+(s.owned()?" · 点击拿去盖印":s.item()==null?" · 玩家清单，尚未实地发现":" · 已发现，尚未获得");}
             case "close" -> "收起漫游志";case "dismiss" -> "收起介绍";case "detailPrev" -> "上一页";case "detailNext" -> "下一页";case "zoomIn" -> "放大";case "zoomOut" -> "缩小";case "fit" -> "查看全部展馆";case "desk" -> "打开盖章工作台";default -> "";
         };
@@ -356,7 +386,7 @@ public final class TravelGuideScreen extends Screen {
             case "zoomIn" -> {pressed=null;view.zoomAt(bw/2.0,bh/2.0,1.3);}case "zoomOut" -> {pressed=null;view.zoomAt(bw/2.0,bh/2.0,1/1.3);}
             case "fit" -> {pressed=null;view.fit(false);}case "desk" -> PostcardScreen.show(this,null);
             case "detailNext" -> detailPage=Math.min(Math.max(0,(stamps(detail).size()-1)/detailCapacity()),detailPage+1);case "detailPrev" -> detailPage=Math.max(0,detailPage-1);
-            case "details","inspection","footprint" -> {detail=target.venue;detailPage=0;}
+            case "details","inspection","footprint","complete" -> {detail=target.venue;detailPage=0;}
             case "travel" -> {if(GuideBridge.teleport(target.venue))minecraft.setScreen(null);else error=GuideBridge.status();}
             case "stamp" -> {
                 var s=stamp(target.venue,target.stamp);

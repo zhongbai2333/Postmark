@@ -10,9 +10,11 @@ public record TravelJournal(int version, List<Entry> entries) {
                 throw new IllegalArgumentException("Invalid discovered stamp");
         }
     }
-    public record Entry(UUID venue,boolean searched,List<FoundStamp> stamps) {
+    public record Entry(UUID venue,boolean searched,List<FoundStamp> stamps,SurveyArea area) {
+        public Entry(UUID venue,boolean searched,List<FoundStamp> stamps) {this(venue,searched,stamps,null);}
         public Entry {
             Objects.requireNonNull(venue); stamps=List.copyOf(stamps);
+            if(area!=null && !searched)throw new IllegalArgumentException("Area survey requires inspection");
             if(stamps.stream().map(FoundStamp::id).distinct().count()!=stamps.size()) throw new IllegalArgumentException("Duplicate stamp IDs");
         }
     }
@@ -31,9 +33,17 @@ public record TravelJournal(int version, List<Entry> entries) {
             var old=result.getOrDefault(d.venue,new Entry(d.venue,false,List.of()));
             var stamps=new LinkedHashMap<String,FoundStamp>();for(var s:old.stamps)stamps.put(s.id,s);
             stamps.put(d.id,new FoundStamp(d.id,d.item));
-            result.put(d.venue,new Entry(d.venue,old.searched,List.copyOf(stamps.values())));
+            result.put(d.venue,new Entry(d.venue,old.searched,List.copyOf(stamps.values()),old.area));
         }
-        for(var id:searched) {var old=result.getOrDefault(id,new Entry(id,false,List.of()));result.put(id,new Entry(id,true,old.stamps));}
+        for(var id:searched) {var old=result.getOrDefault(id,new Entry(id,false,List.of()));result.put(id,new Entry(id,true,old.stamps,old.area));}
+        return new TravelJournal(1,List.copyOf(result.values()));
+    }
+    public boolean areaSearched(GuideVenue venue) {var area=entry(venue.id()).area;return area!=null && area.matches(venue);}
+    public TravelJournal areaSurveyed(Collection<GuideVenue> venues) {
+        var result=new LinkedHashMap<UUID,Entry>();for(var e:entries)result.put(e.venue,e);
+        for(var venue:venues)if(venue.canTeleport()) {
+            var old=entry(venue.id());result.put(venue.id(),new Entry(venue.id(),true,old.stamps,SurveyArea.around(venue)));
+        }
         return new TravelJournal(1,List.copyOf(result.values()));
     }
     public List<KnownStamp> stamps(UUID venue,List<StampDefinition> owned) {

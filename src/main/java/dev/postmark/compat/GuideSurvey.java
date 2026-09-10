@@ -17,19 +17,21 @@ final class GuideSurvey {
     private ClientSession session;
     private final Map<net.minecraft.world.level.ChunkPos,LevelChunk> loaded=new LinkedHashMap<>();
     private final ArrayDeque<LevelChunk> pending=new ArrayDeque<>();
+    private final Map<net.minecraft.world.level.ChunkPos,LevelChunk> inspected=new HashMap<>();
     private int wait,flush;
     private final List<TravelJournal.Discovery> found=new ArrayList<>();
     private final Set<UUID> searched=new HashSet<>();
     // A teleport restarts scheduling, but does not forget chunks that remain loaded.
-    void reset() {session=null;pending.clear();wait=REPEAT_DELAY;flush=0;found.clear();searched.clear();}
+    void reset() {session=null;pending.clear();inspected.clear();wait=REPEAT_DELAY;flush=0;found.clear();searched.clear();}
     void clear() {reset();level=null;loaded.clear();}
     void loaded(LevelChunk chunk) {
         if(!(chunk.getLevel() instanceof ClientLevel client))return;
         if(level!=client) {clear();level=client;}
         loaded.put(chunk.getPos(),chunk);
+        inspected.remove(chunk.getPos());
     }
     void unloaded(LevelChunk chunk) {
-        if(chunk.getLevel()==level)loaded.remove(chunk.getPos(),chunk);
+        if(chunk.getLevel()==level) {loaded.remove(chunk.getPos(),chunk);inspected.remove(chunk.getPos(),chunk);}
     }
     void tick(List<GuideVenue> venues) throws Exception {
         var mc=Minecraft.getInstance();
@@ -40,6 +42,7 @@ final class GuideSurvey {
         if(session!=current) {reset();session=current;}
         if(pending.isEmpty()) {
             if(wait-->0)return;
+            inspected.clear();
             pending.addAll(loaded.values());
             if(pending.isEmpty()) {wait=REPEAT_DELAY;return;}
         }
@@ -57,6 +60,7 @@ final class GuideSurvey {
                 if(id==null || stamp==null || stamp.isBlank() || item==null || !venueIds.contains(id))continue;
                 found.add(new TravelJournal.Discovery(id,stamp,item.toString()));searched.add(id);
             }
+            inspected.put(pos,chunk);
             // An empty inspection may leave a footprint at the player's nearby venue, never invent stamps.
             if(level.dimension().equals(Level.OVERWORLD) && pos.equals(mc.player.chunkPosition())) venues.stream().filter(GuideVenue::canTeleport)
                     .filter(v->v.distanceSquared(mc.player.getX(),mc.player.getZ())<=24*24)
@@ -64,7 +68,16 @@ final class GuideSurvey {
                     .ifPresent(v->searched.add(v.id()));
         }
         if(++flush>=FLUSH_TICKS || pending.isEmpty()) {
-            if(!searched.isEmpty())session.updateJournal(session.journal().surveyed(searched,found));
+            var journal=session.journal().surveyed(searched,found);
+            if(pending.isEmpty() && level.dimension().equals(Level.OVERWORLD)) {
+                var covered=venues.stream().filter(GuideVenue::canTeleport)
+                        .filter(v->SurveyArea.around(v).covered((cx,cz)->{
+                            var chunk=inspected.get(new net.minecraft.world.level.ChunkPos(cx,cz));
+                            return chunk!=null && level.getChunkSource().getChunk(cx,cz,ChunkStatus.FULL,false)==chunk;
+                        })).toList();
+                journal=journal.areaSurveyed(covered);
+            }
+            session.updateJournal(journal);
             found.clear();searched.clear();flush=0;
         }
         if(pending.isEmpty())wait=REPEAT_DELAY;

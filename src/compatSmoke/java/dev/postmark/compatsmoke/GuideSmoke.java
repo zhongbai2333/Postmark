@@ -48,6 +48,7 @@ public final class GuideSmoke {
     private static void next(){stage++;at=ticks;}
     private static MouseButtonEvent mouse(double x,double y){return new MouseButtonEvent(x,y,new MouseButtonInfo(0,0));}
     private static void click(double x,double y){var mc=Minecraft.getInstance();var screen=mc.screen;screen.mouseClicked(mouse(x,y),false);if(mc.screen==screen)screen.mouseReleased(mouse(x,y));}
+    private static GuideVenue venue(UUID id) {return GuideBridge.venues().stream().filter(v->v.id().equals(id)).findFirst().orElseThrow();}
     private static void open() {TravelGuideScreen.show(null);guide=(TravelGuideScreen)Minecraft.getInstance().screen;}
     private static void counter(net.minecraft.server.level.ServerLevel level,BlockPos pos,String id,Identifier item) {
         counter(level,pos,id,item,TARGET);
@@ -64,7 +65,7 @@ public final class GuideSmoke {
         if(!Boolean.getBoolean("postmark.guideSmoke"))return;
         var mc=Minecraft.getInstance();ticks++;
         try{
-            if(stage==99)return;if(ticks>3200)throw new AssertionError("Guide smoke timeout, stage "+stage);
+            if(stage==99)return;if(ticks>4400)throw new AssertionError("Guide smoke timeout, stage "+stage);
             if(ticks%100==0)Postmark.LOGGER.info("Guide smoke stage {} at tick {}, screen {}",stage,ticks,mc.screen==null?"world":mc.screen.getClass().getSimpleName());
             if(stage==0 && mc.getOverlay()==null && mc.screen instanceof net.minecraft.client.gui.screens.AccessibilityOnboardingScreen) {
                 mc.options.onboardAccessibility=false;mc.options.save();mc.setScreen(new TitleScreen());
@@ -152,6 +153,9 @@ public final class GuideSmoke {
             }else if(stage==11 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(TARGET+"/expert"))){
                 if(!TravelJournal.regularComplete(ClientSession.get().journal().stamps(TARGET,ClientSession.get().album().stamps())))throw new AssertionError("Regular completion missing");open();next();
             }else if(stage==12 && ticks-at==10){shot="06-regular-complete.png";
+                var p=guide.inspectionCenter(TARGET);click(p[0],p[1]);
+                if(!TARGET.equals(guide.detailVenue()))throw new AssertionError("Completion tag must open venue details");
+                guide.onClose();
             }else if(stage==12 && ticks-at>15){
                 work=mc.getSingleplayerServer().submit(()->counter(mc.getSingleplayerServer().overworld(),extra,"special",Identifier.parse("minecraft:diamond")));next();
             }else if(stage==13 && work.isDone() && ClientSession.get().journal().entry(TARGET).stamps().size()==3){
@@ -178,12 +182,12 @@ public final class GuideSmoke {
                 mc.screen.onClose();if(mc.screen!=guide)throw new AssertionError("Stamp desk must return to the same canvas");stage=52;at=ticks;
             }else if(stage==52 && ticks-at>12){
                 var p=guide.iconCenter(EMPTY);click(p[0],p[1]);stage=19;at=ticks;
-            }else if(stage==19 && Math.abs(mc.player.getX()-(targetX+6*160+.5))<1 && ClientSession.get().journal().entry(EMPTY).searched()){
+            }else if(stage==19 && Math.abs(mc.player.getX()-(targetX+6*160+.5))<1 && ClientSession.get().journal().areaSearched(venue(EMPTY))){
                 // A real completed empty survey must not invent either regular stamp slot.
                 var entry=ClientSession.get().journal().entry(EMPTY);if(!entry.searched()||!entry.stamps().isEmpty())throw new AssertionError("Empty survey semantics");
                 open();next();
             }else if(stage==20 && ticks-at==10){shot="10-final-magazine.png";
-                if(!guide.needsInspection(EMPTY))throw new AssertionError("Empty scan must not prove absent stamps");
+                if(guide.needsInspection(EMPTY))throw new AssertionError("Completed empty area should resolve local question");
             }else if(stage==20 && ticks-at>15){
                 mc.options.guiScale().set(3);next();
             }else if(stage==21 && ticks-at==10){shot="11-collage-gui3.png";
@@ -197,6 +201,7 @@ public final class GuideSmoke {
                 if(mc.level.getChunkSource().getChunk(remote.getX()>>4,remote.getZ()>>4,net.minecraft.world.level.chunk.status.ChunkStatus.FULL,false)==null)throw new AssertionError("Remote test chunk must already be loaded");
                 work=mc.getSingleplayerServer().submit(()->{
                     var level=mc.getSingleplayerServer().overworld();
+                    EPServer.updateMetadata(REMOTE,m->m.withWaypoint(new ExhibitionWaypoint(remote.getX(),remote.getY(),remote.getZ(),0,0)));
                     counter(level,remote,"visitor",Identifier.parse("minecraft:paper"),REMOTE);
                     counter(level,unloaded,"expert",Identifier.parse("minecraft:emerald"),REMOTE);
                 });next();
@@ -211,8 +216,22 @@ public final class GuideSmoke {
             }else if(stage==24 && work.isDone() && ClientSession.get().journal().entry(REMOTE).stamps().stream().anyMatch(s->s.item().equals("minecraft:diamond"))){
                 work.join();if(ClientSession.get().journal().entry(REMOTE).stamps().size()!=1)throw new AssertionError("Repeat scan duplicated a stamp or inspected an unloaded chunk");
                 next();
-            }else if(stage==25){
-                Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"PASS: unsearched preset and ordinary venues show question; observed slots remove question; empty survey retains question; question and enlarged footprint open details; loaded client chunk discovery 96 blocks away; unloaded server counter ignored; repeat scan updates artwork after movement; real SMU 1.1.12 gallery icons and metadata; bundled preset ghosts without discovery or ownership; all 15 venues on one canvas and every caption; cursor-anchored smooth zoom; native mouse event hover enlargement; canvas drag without teleport; inventory stamp desk and return; canvas GUI 2 and 3; rotated caption and corner targets; desk and inventory mouse entries; isolated stamp hit targets; drag cancellation; real UUID teleport; SMU #visited and arrival alone never mark searched; completed loaded-chunk survey records two unowned stamps and de-duplicates counters; separate journal persists; actual counter interactions collect visitor/expert; regular completion; newly discovered third stamp revokes completion; owned stamp pickup and postcard imprint; empty survey has no invented slots. Synthetic exhibition fixtures, not a production server.");
+            }else if(stage==25 && ClientSession.get().journal().areaSearched(venue(REMOTE))){
+                var session=ClientSession.get();var observed=session.journal().stamps(REMOTE,session.album().stamps());
+                if(StampCatalog.bundled().needsInspection(REMOTE,true,observed,true) || StampCatalog.bundled().complete(REMOTE,observed,true))throw new AssertionError("Single unowned area result");
+                if(!new TravelJournalStore(session.store().directory()).load().areaSearched(venue(REMOTE)))throw new AssertionError("Area result not persisted");
+                work=mc.getSingleplayerServer().submit(()->EPServer.updateFootprint(mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst(),REMOTE,f->f.withStamp(granted("visitor"))));next();
+            }else if(stage==26 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(REMOTE+"/visitor"))){
+                work.join();var session=ClientSession.get();var observed=session.journal().stamps(REMOTE,session.album().stamps());
+                if(!StampCatalog.bundled().complete(REMOTE,observed,session.journal().areaSearched(venue(REMOTE))))throw new AssertionError("Collected single-stamp venue should complete");
+                open();var p=guide.captionCenter(REMOTE);click(p[0],p[1]);shot="15-single-area-result.png";
+                work=mc.getSingleplayerServer().submit(()->counter(mc.getSingleplayerServer().overworld(),remote.offset(2,0,0),"expert",Identifier.parse("minecraft:emerald"),REMOTE));next();
+            }else if(stage==27 && ClientSession.get().journal().entry(REMOTE).stamps().size()==2){
+                work.join();var session=ClientSession.get();
+                if(StampCatalog.bundled().complete(REMOTE,session.journal().stamps(REMOTE,session.album().stamps()),session.journal().areaSearched(venue(REMOTE))))throw new AssertionError("New unowned stamp must revoke single completion");
+                next();
+            }else if(stage==28){
+                Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"PASS: unsearched preset and ordinary venues show question; observed slots remove question; completed waypoint area resolves single or empty venue questions; single collection completes and new expert revokes completion; area evidence persists; question, completion tag and cat footprint open details; loaded client chunk discovery 96 blocks away; unloaded server counter ignored; repeat scan updates artwork after movement; real SMU 1.1.12 gallery icons and metadata; bundled preset ghosts without discovery or ownership; all 15 venues on one canvas and every caption; cursor-anchored smooth zoom; native mouse event hover enlargement; canvas drag without teleport; inventory stamp desk and return; canvas GUI 2 and 3; rotated caption and corner targets; desk and inventory mouse entries; isolated stamp hit targets; drag cancellation; real UUID teleport; SMU #visited and arrival alone never mark searched; completed loaded-chunk survey records two unowned stamps and de-duplicates counters; separate journal persists; actual counter interactions collect visitor/expert; regular completion; newly discovered third stamp revokes completion; owned stamp pickup and postcard imprint; empty survey has no invented slots. Synthetic exhibition fixtures, not a production server.");
                 mc.stop();stage=99;
             }
         }catch(Throwable e){Postmark.LOGGER.error("GUIDE SMOKE FAILED stage="+stage,e);try{Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"FAIL stage="+stage+": "+e);}catch(Exception ignored){}mc.stop();stage=99;}
