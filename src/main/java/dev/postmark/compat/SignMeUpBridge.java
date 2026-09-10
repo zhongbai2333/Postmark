@@ -17,7 +17,7 @@ import java.util.*;
 
 public final class SignMeUpBridge {
     private static final String ROOT = "org.teacon.exhibition_portal.";
-    private static final Map<String,String> SNAPSHOTS = new HashMap<>();
+    private static final dev.postmark.model.StampCaptureCache SNAPSHOTS = new dev.postmark.model.StampCaptureCache();
     private static final Map<String,String> LABELS = new HashMap<>();
     private static Object lastGallery;
     private static Pending pending;
@@ -72,6 +72,19 @@ public final class SignMeUpBridge {
         try {
             resetScope();
             Map<?,?> lookup = gallery();
+            if (lookup != lastGallery && !lookup.isEmpty()) {
+                // Read the complete snapshot before mutating anything. An initial empty lookup is not a reset.
+                var venues=new HashSet<String>();var owned=new HashSet<String>();
+                for(Object exhibition:lookup.values()) {
+                    String venue=((UUID)call(exhibition,"uuid")).toString();venues.add(venue);
+                    for(Object stamp:stamps(exhibition))owned.add(venue+"/"+call(stamp,"id"));
+                }
+                var session=ClientSession.get();var next=session.album().reconcileStamps(venues,owned);
+                if(next!=session.album())session.update(next);
+                SNAPSHOTS.retain(owned);LABELS.keySet().retainAll(owned);
+                for(Object exhibition:lookup.values())for(Object stamp:stamps(exhibition))snapshot(exhibition,stamp);
+                lastGallery=lookup;
+            }
             if (pending != null) {
                 Pending p = pending;
                 if (ticks > p.deadline) { notice = "盖章台确认超时，请再次点击盖章台"; pending = null; }
@@ -88,10 +101,6 @@ public final class SignMeUpBridge {
                         }
                     }
                 }
-            }
-            if (lookup != lastGallery) {
-                lastGallery = lookup;
-                for (Object exhibition : lookup.values()) for (Object stamp : stamps(exhibition)) snapshot(exhibition,stamp);
             }
         } catch (Exception e) {
             if (!notice.startsWith("印章兼容失败")) Postmark.LOGGER.warn("SignMeUp compatibility failed",e);
@@ -114,7 +123,8 @@ public final class SignMeUpBridge {
         String kind=id.equals("expert")?"大师章":id.equals("visitor")?"普通章":id;
         String label=(title.isEmpty() || title.equals("@unset"))?"未命名展区 · "+kind:title+" · "+kind;
         LABELS.put(key,label);
-        if(item.equals(SNAPSHOTS.get(key))) {
+        var cached=SNAPSHOTS.get(key);
+        if(cached!=null && item.equals(cached.item())) {
             var existing=session.album().stamps().stream().filter(s->s.key().equals(key)).findFirst();
             if(existing.isPresent() && !existing.get().name().equals(label))
                 session.update(session.album().unlock(new StampDefinition(key,label,existing.get().asset(),false)));
@@ -122,15 +132,16 @@ public final class SignMeUpBridge {
         }
         String scope=ClientSession.scope();
         var connection=Minecraft.getInstance().getConnection();
-        SNAPSHOTS.put(key,item);
+        var ticket=SNAPSHOTS.start(key,item);
         StampArtwork.capture(item).whenComplete((image,error)->Minecraft.getInstance().execute(()->{
             try {
                 if(!scope.equals(ClientSession.scope()) || connection!=Minecraft.getInstance().getConnection()
-                        || session!=ClientSession.get()) return;
+                        || session!=ClientSession.get() || !SNAPSHOTS.current(key,ticket)) return;
                 if(error!=null) throw new java.io.IOException("Cannot render stamp "+item,error);
                 String asset=session.store().putImage(image);
                 session.update(session.album().unlock(new StampDefinition(key,LABELS.getOrDefault(key,label),asset,false)));
             } catch(Exception e) {
+                SNAPSHOTS.failed(key,ticket);
                 Postmark.LOGGER.warn("Cannot snapshot stamp {} ({})",key,item,e);
                 notice="章面读取失败，未使用替代图案："+item;
             }

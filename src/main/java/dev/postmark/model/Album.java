@@ -49,4 +49,12 @@ public record Album(int version, UUID current, List<Postcard> cards, List<StampD
         if(existing>=0) next.set(existing,stamp);else next.add(stamp);
         return new Album(version, current, cards, next);
     }
+    /** Only reconcile exhibitions present in a server snapshot; keep cards and their image assets. */
+    public Album reconcileStamps(java.util.Set<String> venues,java.util.Set<String> ownedKeys) {
+        var next=stamps.stream().filter(s->{
+            int slash=s.key().indexOf('/');
+            return s.practice() || slash<0 || !venues.contains(s.key().substring(0,slash)) || ownedKeys.contains(s.key());
+        }).toList();
+        return next.equals(stamps)?this:new Album(version,current,cards,next);
+    }
 }

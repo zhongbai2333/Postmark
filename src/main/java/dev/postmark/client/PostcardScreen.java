@@ -335,6 +335,7 @@ public final class PostcardScreen extends Screen {
         });
     }
     private void takeFromBag(StampDefinition stamp) {
+        if(!available(stamp))return;
         revealShelfStamp(stamp);
         setFocused(null);tool=stamp;returning.removeIf(r->r.stamp.key().equals(stamp.key()));
         erasing=false;dragging=true;clickHeld=true;bagPickup=true;resizing=false;angle=0;toolSize=STAMP_SIZE;
@@ -539,6 +540,7 @@ public final class PostcardScreen extends Screen {
     }
     private void placeTool(double x,double y) {
         dragging=false; clickHeld=false; resizing=false; bagPickup=false;
+        if(tool!=null && !available(tool)){tool=null;return;}
         if(tool!=null && overCard(x,y) && card().imprints().size()<Postcard.MAX_IMPRINTS)
             pressing=new PendingStamp(tool,nx(x),ny(y),angle,toolSize,now(),false);
         else { if(overCard(x,y)) say(tr("full")); returnTool(x,y); }
@@ -575,6 +577,9 @@ public final class PostcardScreen extends Screen {
         return super.keyPressed(e);
     }
     @Override public void tick() {
+        if(tool!=null && !available(tool)){tool=null;dragging=false;clickHeld=false;resizing=false;bagPickup=false;}
+        if(pressing!=null && !available(pressing.stamp))pressing=null;
+        returning.removeIf(r->!available(r.stamp));
         if(collectionTag!=null && collectionTag.sync(session.album().stamps()) && now()-lastCollectionSound>=220) {
             lastCollectionSound=now();minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(),1.6f,.2f));
         }
@@ -613,6 +618,13 @@ public final class PostcardScreen extends Screen {
         }
     }
     private boolean requestedSelected;
+    private boolean available(StampDefinition stamp) {
+        if(isTicket(stamp)) {
+            try{return dev.postmark.model.CollectionProgress.from(session.album().stamps()).unlocks(Integer.parseInt(stamp.key().substring("postmark:milestone/".length())));}
+            catch(NumberFormatException e){return false;}
+        }
+        return session.album().stamps().stream().anyMatch(s->s.key().equals(stamp.key()));
+    }
     private String lastNotice="";
     private void sound(boolean stamp) {
         minecraft.getSoundManager().play(SimpleSoundInstance.forUI(stamp?SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT:SoundEvents.UI_BUTTON_CLICK.value(),stamp?.8f:1.1f));
