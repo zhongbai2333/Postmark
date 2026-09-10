@@ -30,19 +30,40 @@ class SurveyAreaTest {
         assertTrue(next.entry(id).stamps().isEmpty());
     }
     @Test void fullAreaResolvesSingleOrEmptyButNeverGrantsCollection() {
-        var catalog=StampCatalog.bundled();var single=List.of(stamp("visitor",false));
-        assertTrue(catalog.needsInspection(id,true,single,false));
-        assertFalse(catalog.needsInspection(id,true,single,true));
-        assertFalse(catalog.complete(id,single,true));
-        assertTrue(catalog.complete(id,List.of(stamp("visitor",true)),true));
+        var catalog=StampCatalog.bundled();
+        for(String type:List.of("visitor","expert")) {
+            var single=List.of(stamp(type,false));
+            assertTrue(catalog.needsInspection(id,true,single,false));
+            assertFalse(catalog.needsInspection(id,true,single,true));
+            assertFalse(catalog.complete(id,single,true));
+            assertTrue(catalog.complete(id,List.of(stamp(type,true)),true));
+        }
         assertFalse(catalog.needsInspection(id,true,List.of(),true));
         assertFalse(catalog.complete(id,List.of(),true));
     }
-    @Test void positiveCatalogEvidenceSurvivesAnEmptyAreaScan() {
+    @Test void completedAreaReplacesPresetOnlySlotsForEitherSingleStampType() {
         var catalog=StampCatalog.bundled();var paired=UUID.fromString("bf52f38c-3531-54fa-a83c-97eeafd51b54");
-        assertTrue(catalog.needsInspection(paired,true,List.of(stamp("visitor",true)),true));
-        assertFalse(catalog.complete(paired,List.of(stamp("visitor",true)),true));
-        assertEquals(2,catalog.merge(paired,List.of()).size());
+        for(String type:List.of("visitor","expert")) {
+            var single=List.of(stamp(type,true));
+            assertTrue(catalog.needsInspection(paired,true,single,false));
+            assertFalse(catalog.complete(paired,single,false));
+            assertEquals(2,catalog.merge(paired,single,false).size());
+            assertFalse(catalog.needsInspection(paired,true,single,true));
+            assertTrue(catalog.complete(paired,single,true));
+            assertEquals(single,catalog.merge(paired,single,true));
+            assertFalse(catalog.complete(paired,List.of(stamp(type,false)),true));
+        }
+        assertTrue(catalog.merge(paired,List.of(),true).isEmpty());
+        assertFalse(catalog.complete(paired,List.of(),true));
+        assertFalse(catalog.needsInspection(paired,true,List.of(),true));
+        assertEquals(2,catalog.merge(paired,List.of(),false).size()); // Partial/new-waypoint scan still uses hints.
+    }
+    @Test void actualUnownedOrdinaryStampSurvivesAreaAndRevokesMasterOnlyCompletion() {
+        var catalog=StampCatalog.bundled();var paired=UUID.fromString("bf52f38c-3531-54fa-a83c-97eeafd51b54");
+        var observed=List.of(stamp("expert",true),stamp("visitor",false));
+        assertEquals(observed,catalog.merge(paired,observed,true));
+        assertFalse(catalog.complete(paired,observed,true));
+        assertFalse(catalog.needsInspection(paired,true,observed,true));
     }
     @Test void laterExtraStampRevokesSingleCompletionAndPreservesCoverage() {
         var journal=TravelJournal.empty().areaSurveyed(List.of(venue(0)));

@@ -34,12 +34,16 @@ public final class StampCatalog {
     public List<TravelJournal.KnownStamp> merge(UUID venue,List<TravelJournal.KnownStamp> observed) {
         var entry=entry(venue);return entry==null?observed:entry.merge(observed);
     }
+    /** A completed waypoint-area survey supersedes preset-only slots, never actual discoveries. */
+    public List<TravelJournal.KnownStamp> merge(UUID venue,List<TravelJournal.KnownStamp> observed,boolean areaSearched) {
+        return areaSearched?List.copyOf(observed):merge(venue,observed);
+    }
     public boolean complete(UUID venue,List<TravelJournal.KnownStamp> observed) {
         var entry=entry(venue);return entry==null?TravelJournal.regularComplete(observed):entry.complete(observed);
     }
     public boolean complete(UUID venue,List<TravelJournal.KnownStamp> observed,boolean areaSearched) {
         if(!areaSearched)return complete(venue,observed);
-        var known=merge(venue,observed);
+        var known=merge(venue,observed,true);
         return !known.isEmpty() && known.stream().allMatch(TravelJournal.KnownStamp::owned);
     }
     /** A partial or empty scan alone is not evidence of absence. */
@@ -48,11 +52,12 @@ public final class StampCatalog {
     }
     public boolean needsInspection(UUID venue,boolean searched,List<TravelJournal.KnownStamp> observed,boolean areaSearched) {
         if(!searched)return true;
+        if(areaSearched)return false;
         var entry=entry(venue);
         for(String id:List.of("visitor","expert")) {
             if(observed.stream().anyMatch(s->s.id().equals(id)))continue;
             Presence expected=entry==null?Presence.UNKNOWN:id.equals("visitor")?entry.visitor():entry.expert();
-            if(expected!=Presence.ABSENT && !(areaSearched && expected==Presence.UNKNOWN))return true;
+            if(expected!=Presence.ABSENT)return true;
         }
         return false;
     }

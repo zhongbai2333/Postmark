@@ -91,8 +91,9 @@ public final class TravelGuideScreen extends Screen {
         if(stateJournal!=journal || stateOwned!=owned || stateVenues!=venues) {
             states.clear();var catalog=StampCatalog.bundled();
             for(var venue:venues) {
-                var id=venue.id();var observed=journal.stamps(id,owned);var known=catalog.merge(id,observed);
+                var id=venue.id();var observed=journal.stamps(id,owned);
                 boolean searched=journal.entry(id).searched(),area=journal.areaSearched(venue);
+                var known=catalog.merge(id,observed,area);
                 var visitor=known.stream().filter(stamp->stamp.id().equals("visitor")).findFirst().orElse(null);
                 var expert=known.stream().filter(stamp->stamp.id().equals("expert")).findFirst().orElse(null);
                 states.put(id,new VenueState(known,searched,area,catalog.complete(id,observed,area),catalog.needsInspection(id,searched,observed,area),visitor,expert,

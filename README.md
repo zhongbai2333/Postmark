@@ -26,7 +26,7 @@ Minecraft 客户端明信片模组：从章袋取出印章，盖下旅途的回�
 ## 安装
 
 1. 准备 Minecraft **26.1.2**、NeoForge **26.1.2.75** 和 **Java 25**。当前依赖范围见模组元数据。
-2. 从 [Releases](https://github.com/zhongbai2333/Postmark/releases) 下载已发布的 Postmark JAR，放入客户端实例的 `mods` 文件夹。不要安装 `-sources.jar`。当前源码版本为 `0.1.0-alpha.26`，本地构建产物见 `build/libs/`。
+2. 从 [Releases](https://github.com/zhongbai2333/Postmark/releases) 下载已发布的 Postmark JAR，放入客户端实例的 `mods` 文件夹。不要安装 `-sources.jar`。当前源码版本为 `0.1.0-alpha.27`，本地构建产物见 `build/libs/`。
 3. 进入世界，按 **P** 打开明信片；按键可在游戏控制设置中修改。
 
 Postmark 仅需客户端安装。没有 SMU 也能使用，提供一枚“启程”预设章；更多章来自 SMU。联动已验证 ExhibitionPortal **1.1.12**，服务器需正常运行其原有 SMU 环境。
