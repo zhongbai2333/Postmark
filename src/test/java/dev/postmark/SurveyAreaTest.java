@@ -42,7 +42,7 @@ class SurveyAreaTest {
         assertFalse(catalog.complete(id,List.of(),true));
     }
     @Test void completedAreaReplacesPresetOnlySlotsForEitherSingleStampType() {
-        var catalog=StampCatalog.bundled();var paired=UUID.fromString("bf52f38c-3531-54fa-a83c-97eeafd51b54");
+        var paired=UUID.fromString("bf52f38c-3531-54fa-a83c-97eeafd51b54");var catalog=StampCatalog.read(new java.io.StringReader("{\"version\":1,\"date\":\"test\",\"entries\":[{\"venue\":\""+paired+"\",\"sourceRow\":0,\"name\":\"legacy\",\"visitor\":\"PRESENT\",\"expert\":\"PRESENT\"}]}"));
         for(String type:List.of("visitor","expert")) {
             var single=List.of(stamp(type,true));
             assertTrue(catalog.needsInspection(paired,true,single,false));
@@ -59,7 +59,7 @@ class SurveyAreaTest {
         assertEquals(2,catalog.merge(paired,List.of(),false).size()); // Partial/new-waypoint scan still uses hints.
     }
     @Test void actualUnownedOrdinaryStampSurvivesAreaAndRevokesMasterOnlyCompletion() {
-        var catalog=StampCatalog.bundled();var paired=UUID.fromString("bf52f38c-3531-54fa-a83c-97eeafd51b54");
+        var paired=UUID.fromString("bf52f38c-3531-54fa-a83c-97eeafd51b54");var catalog=StampCatalog.read(new java.io.StringReader("{\"version\":1,\"date\":\"test\",\"entries\":[{\"venue\":\""+paired+"\",\"sourceRow\":0,\"name\":\"legacy\",\"visitor\":\"PRESENT\",\"expert\":\"PRESENT\"}]}"));
         var observed=List.of(stamp("expert",true),stamp("visitor",false));
         assertEquals(observed,catalog.merge(paired,observed,true));
         assertFalse(catalog.complete(paired,observed,true));

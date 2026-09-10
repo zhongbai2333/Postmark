@@ -26,7 +26,7 @@ Minecraft 客户端明信片模组：从章袋取出印章，盖下旅途的回�
 ## 安装
 
 1. 准备 Minecraft **26.1.2**、NeoForge **26.1.2.75** 和 **Java 25**。当前依赖范围见模组元数据。
-2. 从 [Releases](https://github.com/zhongbai2333/Postmark/releases) 下载已发布的 Postmark JAR，放入客户端实例的 `mods` 文件夹。不要安装 `-sources.jar`。当前正式版本为 `0.1.1`，本地构建产物见 `build/libs/`。
+2. 从 [Releases](https://github.com/zhongbai2333/Postmark/releases) 下载已发布的 Postmark JAR，放入客户端实例的 `mods` 文件夹。不要安装 `-sources.jar`。当前正式版本为 `0.1.2`，本地构建产物见 `build/libs/`。
 3. 进入世界，按 **P** 打开明信片；按键可在游戏控制设置中修改。
 
 Postmark 仅需客户端安装。没有 SMU 也能使用，提供一枚“启程”预设章；更多章来自 SMU。联动已验证 ExhibitionPortal **1.1.12**，服务器需正常运行其原有 SMU 环境。
@@ -60,7 +60,7 @@ Postmark 仅需客户端安装。没有 SMU 也能使用，提供一枚“启程
 
 详细交互、草稿保存及目录说明见 [操作说明](docs/USAGE.md)。
 
-TeaCon 2026 玩家盖章表已内置为预设：66 个展馆按官方 UUID 匹配，未领取章提前显示淡色问号章位。清单不授章、不写入脚印；来源、未匹配记录与完整性边界见 [预设说明](docs/STAMP_CATALOG.md)。
+TeaCon 2026 玩家盖章表已内置为预设：74 个展馆、112 枚章按玩家确认的导出记录匹配，单章馆一个剪影、双章馆两个；实际发现后显示淡色章面，领取后点亮并快速判断集齐。清单不授章、不写入脚印；来源、未匹配记录与完整性边界见 [预设说明](docs/STAMP_CATALOG.md)。
 
 ## SMU 联动
 
@@ -95,7 +95,7 @@ envelope.png    带签名的信封背面
 ./gradlew build
 ```
 
-Windows 使用 `./gradlew.bat build`，需要 JDK 25。当前 **64 项单元测试**，另有真实 Minecraft 工作台和 SMU 集成服务器测试。命令、夹具及验证边界见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [验证记录](docs/VALIDATION.md)。
+Windows 使用 `./gradlew.bat build`，需要 JDK 25。当前 **66 项单元测试**，另有真实 Minecraft 工作台和 SMU 集成服务器测试。命令、夹具及验证边界见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [验证记录](docs/VALIDATION.md)。
 
 界面主要为中文；拼音搜索、纸张模板和自由选择裁切区域尚未实现（目前为居中裁切）。特殊物品渲染器、远程活动服专用资源包仍需实际验证。
 

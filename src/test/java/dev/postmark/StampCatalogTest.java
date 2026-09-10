@@ -11,9 +11,9 @@ class StampCatalogTest {
     private final UUID sky=UUID.fromString("493f4bbe-20c0-5d8b-bf29-ac3ce6d84076");
     private TravelJournal.KnownStamp stamp(String id,boolean owned) {return new TravelJournal.KnownStamp(id,"minecraft:paper",owned?"image.png":null,owned);}
     @Test void resourceMapsOnlyVerifiedIdentities() {
-        assertEquals(66,catalog.size());assertEquals("2026-09-10",catalog.date());
+        assertEquals(74,catalog.size());assertEquals("2026-09-10",catalog.date());
         assertEquals("MCP",catalog.entry(mcp).name());assertNull(catalog.entry(UUID.randomUUID()));
-        assertNull(catalog.entry(UUID.fromString("01210ebf-d7c9-5eb9-83cd-bdd1f80fcf88"))); // grouped E7
+        assertEquals("Mino++",catalog.entry(UUID.fromString("01210ebf-d7c9-5eb9-83cd-bdd1f80fcf88")).name()); // player export resolves grouped E7
     }
     @Test void presetDoesNotGrantOwnershipSurveyOrArtwork() {
         var journal=TravelJournal.empty();var merged=catalog.merge(mcp,journal.stamps(mcp,List.of()));
@@ -21,8 +21,38 @@ class StampCatalogTest {
         assertFalse(merged.getFirst().owned());assertNull(merged.getFirst().item());assertNull(merged.getFirst().asset());
         assertFalse(journal.entry(mcp).searched());assertTrue(journal.entries().isEmpty());assertFalse(catalog.complete(mcp,List.of()));
     }
-    @Test void explicitSingleStampCompletesButBlankMasterRemainsUnknown() {
-        var visitor=List.of(stamp("visitor",true));assertTrue(catalog.complete(mcp,visitor));assertFalse(catalog.complete(sky,visitor));
+    @Test void importedCatalogOnlyProvidesSilhouettesForAllSeventyFourVenues() throws Exception {
+        try(var reader=new java.io.InputStreamReader(getClass().getResourceAsStream("/assets/postmark/catalogs/teacon2026.json"),java.nio.charset.StandardCharsets.UTF_8)) {
+            var root=com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();int confirmed=0;
+            for(var value:root.getAsJsonArray("entries")) {
+                var row=value.getAsJsonObject();if(!row.has("venue"))continue;
+                var id=UUID.fromString(row.get("venue").getAsString());var display=catalog.display(id,List.of(),false);
+                assertEquals(row.getAsJsonArray("confirmedByExport").size(),display.size());
+                for(var stamp:display){assertNull(stamp.item());assertNull(stamp.asset());assertFalse(stamp.owned());}
+                assertTrue(catalog.needsInspection(id,false,List.of(),false));assertFalse(catalog.complete(id,List.of(),false));
+                confirmed+=row.getAsJsonArray("confirmedByExport").size();
+                assertFalse(row.has("stamps"));assertFalse(row.has("searched"));assertFalse(row.has("allKnownCollected"));
+            }
+            assertEquals(112,confirmed);
+        }
+    }
+    @Test void discoveryRevealsArtworkAndCollectionLightsItWithoutWaitingForArea() {
+        for(String kind:List.of("visitor","expert")) {
+            String json="{\"version\":1,\"date\":\"test\",\"entries\":[{\"venue\":\""+mcp+"\",\"sourceRow\":0,\"name\":\"single\",\"visitor\":\""+(kind.equals("visitor")?"PRESENT":"ABSENT")+"\",\"expert\":\""+(kind.equals("expert")?"PRESENT":"ABSENT")+"\",\"confirmedByExport\":[\""+kind+"\"]}]}";
+            var single=StampCatalog.read(new java.io.StringReader(json));
+            var initial=single.display(mcp,List.of(),false);assertEquals(1,initial.size());assertNull(initial.getFirst().item());
+            var seen=List.of(stamp(kind,false));assertEquals(seen,single.display(mcp,seen,false));
+            assertFalse(single.complete(mcp,seen,false));
+            var owned=List.of(stamp(kind,true));assertTrue(single.complete(mcp,owned,false));
+            assertFalse(single.needsInspection(mcp,false,owned,false));
+            var additional=List.of(stamp(kind,true),stamp(kind.equals("visitor")?"expert":"visitor",false));
+            assertEquals(2,single.display(mcp,additional,true).size());assertFalse(single.complete(mcp,additional,true));
+        }
+        assertEquals(2,catalog.display(UUID.randomUUID(),List.of(),false).size());
+    }
+    @Test void confirmedSingleCompletesImmediatelyAndPairWaitsForBoth() {
+        var visitor=List.of(stamp("visitor",true));assertTrue(catalog.complete(mcp,visitor));assertTrue(catalog.complete(sky,visitor));
+        var paired=UUID.fromString("bf52f38c-3531-54fa-a83c-97eeafd51b54");assertFalse(catalog.complete(paired,visitor,true));
         assertTrue(catalog.complete(sky,List.of(stamp("visitor",true),stamp("expert",true))));
     }
     @Test void observedExtraAndContradictedAbsenceRevokeCompletion() {
@@ -43,19 +73,20 @@ class StampCatalogTest {
         assertFalse(catalog.complete(id,List.of(stamp("visitor",true))));
         assertTrue(catalog.complete(id,List.of(stamp("visitor",true),stamp("expert",true))));
     }
-    @Test void UnsearchedVenuesKeepQuestionEvenWithPresetOrOwnedStamps() {
+    @Test void UnsearchedVenuesKeepQuestionUntilActualCollectionCompletes() {
         assertTrue(catalog.needsInspection(mcp,false,List.of()));
-        assertTrue(catalog.needsInspection(sky,false,List.of(stamp("visitor",true),stamp("expert",true))));
+        assertFalse(catalog.needsInspection(sky,false,List.of(stamp("visitor",true),stamp("expert",true))));
         assertTrue(catalog.needsInspection(UUID.randomUUID(),false,List.of()));
     }
     @Test void EmptyOrPartialScanCannotEraseUnknownOrKnownUncollectedSlots() {
         assertTrue(catalog.needsInspection(UUID.randomUUID(),true,List.of()));
         assertTrue(catalog.needsInspection(mcp,true,List.of())); // ordinary is known to exist
-        assertTrue(catalog.needsInspection(sky,true,List.of(stamp("visitor",false)))); // master unknown
+        assertTrue(catalog.needsInspection(UUID.fromString("bf52f38c-3531-54fa-a83c-97eeafd51b54"),true,List.of(stamp("visitor",false)),true)); // confirmed master cannot disappear after area scan
         assertEquals(1,catalog.merge(mcp,List.of()).size());
     }
-    @Test void QuestionClearsWithObservedStampsAndExplicitAbsenceWithoutClaimingOwnership() {
+    @Test void QuestionClearsWithObservedPairOrCompletedAreaWithoutClaimingOwnership() {
         assertFalse(catalog.needsInspection(mcp,true,List.of(stamp("visitor",false))));
+        assertFalse(catalog.needsInspection(mcp,true,List.of(stamp("visitor",false)),true));
         assertFalse(catalog.needsInspection(sky,true,List.of(stamp("visitor",false),stamp("expert",false))));
         assertFalse(catalog.complete(mcp,List.of(stamp("visitor",false))));
         assertFalse(catalog.complete(sky,List.of(stamp("visitor",false),stamp("expert",false))));

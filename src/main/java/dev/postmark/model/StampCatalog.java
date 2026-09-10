@@ -8,7 +8,7 @@ import java.util.*;
 /** Community expectations are read-only hints, never discoveries or ownership. */
 public final class StampCatalog {
     public enum Presence { PRESENT, ABSENT, UNKNOWN }
-    public record Entry(UUID venue,int sourceRow,String name,Presence visitor,Presence expert) {
+    public record Entry(UUID venue,int sourceRow,String name,Presence visitor,Presence expert,boolean confirmed) {
         public Entry { Objects.requireNonNull(visitor);Objects.requireNonNull(expert); }
         public List<TravelJournal.KnownStamp> merge(List<TravelJournal.KnownStamp> observed) {
             var result=new LinkedHashMap<String,TravelJournal.KnownStamp>();
@@ -34,9 +34,21 @@ public final class StampCatalog {
     public List<TravelJournal.KnownStamp> merge(UUID venue,List<TravelJournal.KnownStamp> observed) {
         var entry=entry(venue);return entry==null?observed:entry.merge(observed);
     }
-    /** A completed waypoint-area survey supersedes preset-only slots, never actual discoveries. */
+    /** A completed area survey can supersede old hints; confirmed targets and discoveries remain. */
     public List<TravelJournal.KnownStamp> merge(UUID venue,List<TravelJournal.KnownStamp> observed,boolean areaSearched) {
-        return areaSearched?List.copyOf(observed):merge(venue,observed);
+        var entry=entry(venue);
+        return areaSearched && (entry==null || !entry.confirmed())?List.copyOf(observed):merge(venue,observed);
+    }
+    /** Unknown corners remain silhouettes; preset data never supplies artwork or ownership. */
+    public List<TravelJournal.KnownStamp> display(UUID venue,List<TravelJournal.KnownStamp> observed,boolean areaSearched) {
+        var result=new LinkedHashMap<String,TravelJournal.KnownStamp>();
+        var entry=entry(venue);
+        if(!areaSearched)for(String id:List.of("visitor","expert")) {
+            Presence expected=entry==null?Presence.UNKNOWN:id.equals("visitor")?entry.visitor():entry.expert();
+            if(expected==Presence.UNKNOWN)result.put(id,new TravelJournal.KnownStamp(id,null,null,false));
+        }
+        for(var stamp:merge(venue,observed,areaSearched))result.put(stamp.id(),stamp);
+        return List.copyOf(result.values());
     }
     public boolean complete(UUID venue,List<TravelJournal.KnownStamp> observed) {
         var entry=entry(venue);return entry==null?TravelJournal.regularComplete(observed):entry.complete(observed);
@@ -51,9 +63,10 @@ public final class StampCatalog {
         return needsInspection(venue,searched,observed,false);
     }
     public boolean needsInspection(UUID venue,boolean searched,List<TravelJournal.KnownStamp> observed,boolean areaSearched) {
+        if(complete(venue,observed,areaSearched))return false;
         if(!searched)return true;
-        if(areaSearched)return false;
         var entry=entry(venue);
+        if(areaSearched && (entry==null || !entry.confirmed()))return false;
         for(String id:List.of("visitor","expert")) {
             if(observed.stream().anyMatch(s->s.id().equals(id)))continue;
             Presence expected=entry==null?Presence.UNKNOWN:id.equals("visitor")?entry.visitor():entry.expert();
@@ -78,7 +91,7 @@ public final class StampCatalog {
             if(!row.has("venue"))continue; // Retain ambiguous source rows without assigning them to a gallery.
             var id=UUID.fromString(row.get("venue").getAsString());
             var entry=new Entry(id,row.get("sourceRow").getAsInt(),row.get("name").getAsString(),
-                    Presence.valueOf(row.get("visitor").getAsString()),Presence.valueOf(row.get("expert").getAsString()));
+                    Presence.valueOf(row.get("visitor").getAsString()),Presence.valueOf(row.get("expert").getAsString()),row.has("confirmedByExport"));
             if(result.put(id,entry)!=null)throw new IllegalArgumentException("Duplicate catalog venue: "+id);
         }
         return new StampCatalog(root.get("date").getAsString(),result);

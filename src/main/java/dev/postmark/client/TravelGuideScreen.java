@@ -93,7 +93,7 @@ public final class TravelGuideScreen extends Screen {
             for(var venue:venues) {
                 var id=venue.id();var observed=journal.stamps(id,owned);
                 boolean searched=journal.entry(id).searched(),area=journal.areaSearched(venue);
-                var known=catalog.merge(id,observed,area);
+                var known=catalog.display(id,observed,area);
                 var visitor=known.stream().filter(stamp->stamp.id().equals("visitor")).findFirst().orElse(null);
                 var expert=known.stream().filter(stamp->stamp.id().equals("expert")).findFirst().orElse(null);
                 states.put(id,new VenueState(known,searched,area,catalog.complete(id,observed,area),catalog.needsInspection(id,searched,observed,area),visitor,expert,
@@ -182,6 +182,7 @@ public final class TravelGuideScreen extends Screen {
     private boolean areaSearched(UUID id) {var state=states.get(id);return state!=null&&state.area;}
     private boolean complete(UUID id) {var state=states.get(id);return state!=null&&state.complete;}
     public boolean needsInspection(UUID id) {var state=states.get(id);return state==null||state.inspection;}
+    public List<TravelJournal.KnownStamp> displayedStamps(UUID id) {return stamps(id);}
     private TravelJournal.KnownStamp stamp(UUID id,String kind) {
         var state=states.get(id);if(state==null)return null;
         return kind.equals("visitor")?state.visitor:kind.equals("expert")?state.expert:state.stamps.stream().filter(s->s.id().equals(kind)).findFirst().orElse(null);
@@ -333,7 +334,7 @@ public final class TravelGuideScreen extends Screen {
             case "inspection" -> journal.entry(hit.venue).searched()?"已检索，仍有章位未确认 · 点击查看":"章位尚未检索 · 点击查看";
             case "complete" -> "已知章已集齐 · 点击查看";
             case "footprint" -> "猫猫踩过啦 · 已检索，点击查看";
-            case "stamp" -> {var s=stamp(hit.venue,hit.stamp);yield s==null?"":(s.id().equals("visitor")?"普通章":s.id().equals("expert")?"大师章":s.id())+(s.owned()?" · 点击拿去盖印":s.item()==null?" · 玩家清单，尚未实地发现":" · 已发现，尚未获得");}
+            case "stamp" -> {var s=stamp(hit.venue,hit.stamp);yield s==null?"":(s.id().equals("visitor")?"普通章":s.id().equals("expert")?"大师章":s.id())+(s.owned()?" · 点击拿去盖印":s.item()==null?" · 尚未实地发现":" · 已发现，尚未获得");}
             case "close" -> "收起漫游志";case "dismiss" -> "收起介绍";case "detailPrev" -> "上一页";case "detailNext" -> "下一页";case "zoomIn" -> "放大";case "zoomOut" -> "缩小";case "fit" -> "查看全部展馆";case "desk" -> "打开盖章工作台";default -> "";
         };
     }

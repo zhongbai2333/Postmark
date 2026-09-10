@@ -15,6 +15,10 @@
       "venue": "b9a7f388-eb58-5670-93ad-7fb21f462b49",
       "mods": [
         "thestreetism"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -27,6 +31,10 @@
       "mods": [
         "channel",
         "madparticle"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -38,6 +46,10 @@
       "venue": "95e2e7db-4496-53b0-b80b-df0bcfe65989",
       "mods": [
         "nestle"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -49,6 +61,10 @@
       "venue": "a8814755-54c1-57cb-b778-120f55b2f589",
       "mods": [
         "simple_path_finder"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -60,6 +76,10 @@
       "venue": "49a31d8c-c7d1-5156-8738-91692351a8f5",
       "mods": [
         "trading_table"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -71,6 +91,9 @@
       "venue": "b8509a22-7c38-593d-b3fc-e2a2fe13bbe4",
       "mods": [
         "mcpmod"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -82,6 +105,10 @@
       "venue": "99837247-f2c2-5433-8b22-9a759fda4bf3",
       "mods": [
         "momentum"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -89,10 +116,13 @@
       "plot": "B2",
       "name": "光遇",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "493f4bbe-20c0-5d8b-bf29-ac3ce6d84076",
       "mods": [
         "thatskyinteractions"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -105,6 +135,10 @@
       "mods": [
         "girlfriends",
         "inkraft"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -116,6 +150,10 @@
       "venue": "f0c61045-37b5-5eaa-b4a8-3dcb2bbe8957",
       "mods": [
         "locusazzurro_icaruswings"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -129,6 +167,10 @@
         "beecrasy",
         "eclipticseasons",
         "shengpi"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -136,10 +178,13 @@
       "plot": "B6",
       "name": "十二木砧",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "c7b3aa34-a5f1-5fcc-9322-9a13dfc4cc57",
       "mods": [
         "woodenanvil"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -147,10 +192,13 @@
       "plot": "B7",
       "name": "糖果工坊",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "6ee62028-d78a-5041-b0d7-2763e9d195ec",
       "mods": [
         "ccw"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -163,6 +211,10 @@
       "mods": [
         "convivium",
         "neo_mystias_izakaya"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -174,6 +226,10 @@
       "venue": "33362f82-c266-5c69-bb2b-7eccde14d76c",
       "mods": [
         "ultramarine"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -181,10 +237,13 @@
       "plot": "BX",
       "name": "Letter，Signal，Phone",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "40935e04-a43c-579d-85bf-58ed171b377a",
       "mods": [
         "letter_signal_phone"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -196,6 +255,10 @@
       "venue": "2b340aec-df29-5d73-968a-9ea3e41e75da",
       "mods": [
         "ashihara"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -203,10 +266,13 @@
       "plot": "",
       "name": "dynamictrees",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "3a577a32-8907-5fc7-8284-a783ca84acee",
       "mods": [
         "dynamictrees"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -214,10 +280,13 @@
       "plot": "",
       "name": "craton",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "63a98dac-ae01-5296-b62d-219b96cfc860",
       "mods": [
         "craton"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -229,6 +298,9 @@
       "venue": "a6670dd8-7711-5a78-85b3-cbbf4d63f67b",
       "mods": [
         "netherlink"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -241,6 +313,10 @@
       "mods": [
         "wenyan_addon",
         "wenyan_programming"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -253,6 +329,9 @@
       "mods": [
         "yuushya",
         "yuushya_modelling"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -264,6 +343,10 @@
       "venue": "40679b45-20a1-52ca-a7e1-028eab7a8b0f",
       "mods": [
         "transmutatoria"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -275,6 +358,9 @@
       "venue": "3f52abe9-bf3a-5655-9c63-7d7c5dd62465",
       "mods": [
         "magic_io"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -286,6 +372,9 @@
       "venue": "1a71e0e4-cd00-51e1-9139-03006438de0f",
       "mods": [
         "chatbox"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -293,12 +382,15 @@
       "plot": "C6",
       "name": "袖里舆图/山河同契/中键标点",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "fb66dbaa-bcb1-561a-938c-bc9c7fee6fde",
       "mods": [
         "aleeve_atlas",
         "bonded_peaks",
         "middle_key_ping"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -310,6 +402,10 @@
       "venue": "40b4ad75-5d02-5541-b0f2-821bed026974",
       "mods": [
         "crockpot"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -321,6 +417,10 @@
       "venue": "8d9fc255-6c4f-5ae2-ae7d-0593c6ede629",
       "mods": [
         "terraria_boulders"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -336,10 +436,13 @@
       "plot": "D0",
       "name": "展示玩偶 / 主展馆",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "24271db3-f33b-516b-89e6-9f653c0c80ee",
       "mods": [
         "displaydoll"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -347,11 +450,14 @@
       "plot": "D2",
       "name": "藿香/八角",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "c4e8875a-228e-569b-a33d-622fd411e1c6",
       "mods": [
         "ageratum",
         "anisum"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -367,17 +473,24 @@
         "nekoplus",
         "voidinair"
       ],
-      "note": "不同图案共用普通章位，不重复计数"
+      "note": "不同图案共用普通章位，不重复计数",
+      "confirmedByExport": [
+        "expert",
+        "visitor"
+      ]
     },
     {
       "sourceRow": 35,
       "plot": "D4",
       "name": "MTR",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "2f0e0ca5-53b8-5b0b-a9f2-37685ffe26d7",
       "mods": [
         "mtr"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -385,22 +498,28 @@
       "plot": "D5",
       "name": "八音盒/掘电报",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "5a32f0b6-580f-5e1f-ae94-933ddbd3bbdd",
       "mods": [
         "cc_mb",
         "cc_ms"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
       "sourceRow": 37,
       "plot": "D6",
       "name": "吉星工艺",
-      "visitor": "UNKNOWN",
-      "expert": "UNKNOWN",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
       "venue": "51fb1a8e-1ab4-5bb6-a617-32acf83159d9",
       "mods": [
         "astral_craft"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -408,12 +527,15 @@
       "plot": "D7",
       "name": "铁砧工艺",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "784b34de-ac17-567f-a9f0-bcc1853a1a5b",
       "mods": [
         "anvilcraft"
       ],
-      "note": "不同图案共用普通章位，不重复计数"
+      "note": "不同图案共用普通章位，不重复计数",
+      "confirmedByExport": [
+        "visitor"
+      ]
     },
     {
       "sourceRow": 39,
@@ -425,6 +547,10 @@
       "mods": [
         "advanced_clover",
         "autosprint"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -448,10 +574,13 @@
       "plot": "E1",
       "name": "联界门",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "0f9196eb-b8bd-5cb8-a7fd-955f9c907469",
       "mods": [
         "link_portals"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -459,11 +588,14 @@
       "plot": "E2",
       "name": "炼药锅++/口水仗",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "504b8655-6c86-5007-9b1f-c4e684afedbd",
       "mods": [
         "cauldronpp",
         "spitfight"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -475,6 +607,10 @@
       "venue": "1d0e3fa8-27dd-578a-8751-5e00ff9e9d84",
       "mods": [
         "vw50"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -487,6 +623,10 @@
       "mods": [
         "furnitureplan",
         "lights_up"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -499,6 +639,10 @@
       "mods": [
         "net_music_can_play_bili",
         "super_lead"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -510,6 +654,10 @@
       "venue": "8a511589-eb82-5486-bfe3-a99137b65b02",
       "mods": [
         "drglaserpointer"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -525,10 +673,13 @@
       "plot": "E8",
       "name": "neoacoAE",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "0246f461-2891-56ff-847e-9d671f675a44",
       "mods": [
         "neoecoae"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -540,6 +691,10 @@
       "venue": "03785bcc-c6d2-5a1b-81d1-42efe7d01486",
       "mods": [
         "minecartrevolution"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -547,10 +702,14 @@
       "plot": "F1",
       "name": "工业基石",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "PRESENT",
       "venue": "0efc3845-c34a-532e-bbbc-4f199bb96d0a",
       "mods": [
         "industrybase"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -558,11 +717,15 @@
       "plot": "F2",
       "name": "烘培坊/小酌一刻",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "PRESENT",
       "venue": "37c624dd-85f2-5e07-973e-9e7a22f37cf6",
       "mods": [
         "bakeries",
         "sip_moment"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -574,6 +737,10 @@
       "venue": "a7e249d4-f20e-56c9-9a19-24a40426f6ac",
       "mods": [
         "aaa_particles_world"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -585,6 +752,10 @@
       "venue": "6bed2480-6bc9-5440-9369-7505675fa8aa",
       "mods": [
         "harvestheritage"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -592,10 +763,13 @@
       "plot": "F5",
       "name": "方生未逝",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "9bbaa28c-9f46-56d7-a51e-7c211f289b45",
       "mods": [
         "living_unvanished"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -608,6 +782,10 @@
       "mods": [
         "damagenexus",
         "obeliskdepths"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -619,6 +797,10 @@
       "venue": "6535703a-13d8-5858-a94d-77ba83cbc341",
       "mods": [
         "bsf3lite"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -634,10 +816,13 @@
       "plot": "G2",
       "name": "连锁挖矿（TeaCon微型……）",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "697bebe7-1bfb-5017-a6b0-21cf795c8fb1",
       "mods": [
         "dh_s_veinminer"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -645,10 +830,13 @@
       "plot": "G3",
       "name": "Shake n Stir",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "f553efdc-572d-54a8-88aa-95f7fdeded09",
       "mods": [
         "shakenstir"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -656,10 +844,13 @@
       "plot": "G4",
       "name": "Arcanism / 魔导主义",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "af336844-b982-5fdd-ab00-b289ab7d6a9c",
       "mods": [
         "programmable_magic"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -671,6 +862,10 @@
       "venue": "bb3bdfe7-0b86-56bc-9a87-8c238f038c13",
       "mods": [
         "shadowsandpetals"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -678,10 +873,13 @@
       "plot": "",
       "name": "x3d地图",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "a5e9f62c-bfcb-5b3c-8989-75e599d2420c",
       "mods": [
         "x3d_map"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -693,6 +891,10 @@
       "venue": "b08970d3-6b71-5bbf-bb65-f9550143347d",
       "mods": [
         "dungeon_infinity"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -704,6 +906,10 @@
       "venue": "3cb2083d-424f-5032-9f3b-7cb7c9a5a361",
       "mods": [
         "lanfasie_benderson"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -715,6 +921,10 @@
       "venue": "158c2566-2185-5151-8831-d52e97f6b2e1",
       "mods": [
         "modulargolems"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -726,6 +936,10 @@
       "venue": "c31b12c2-2283-598f-aad0-ab69a0cfeceb",
       "mods": [
         "grack"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -733,10 +947,13 @@
       "plot": "H8",
       "name": "无穷桌游",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "29e165cf-18e9-5e2c-9a62-ac5c13de15fe",
       "mods": [
         "infinite_board_games"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -748,6 +965,10 @@
       "venue": "ca59646b-caa1-5062-beb3-55720b8898d7",
       "mods": [
         "hurriedness"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -760,6 +981,10 @@
       "mods": [
         "ether_craft",
         "path_script"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -767,10 +992,13 @@
       "plot": "J1",
       "name": "更好的钓竿",
       "visitor": "PRESENT",
-      "expert": "UNKNOWN",
+      "expert": "ABSENT",
       "venue": "5b8edf76-c8fc-5406-89ec-b5922669898e",
       "mods": [
         "better_rod"
+      ],
+      "confirmedByExport": [
+        "visitor"
       ]
     },
     {
@@ -782,6 +1010,10 @@
       "venue": "096135c0-a0a3-58f4-88df-4b168d351278",
       "mods": [
         "delicacyworld"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
       ]
     },
     {
@@ -793,7 +1025,99 @@
       "venue": "70e8b541-5109-5fcf-89b4-2efed236e4b6",
       "mods": [
         "mekmm"
+      ],
+      "confirmedByExport": [
+        "expert",
+        "visitor"
+      ]
+    },
+    {
+      "sourceRow": 0,
+      "name": "Mino++",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "01210ebf-d7c9-5eb9-83cd-bdd1f80fcf88",
+      "confirmedByExport": [
+        "visitor"
+      ]
+    },
+    {
+      "sourceRow": 0,
+      "name": "随笔评论 WorldComment",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "0a63c0e0-0f24-475e-8a47-d2d2a001a787",
+      "confirmedByExport": [
+        "visitor"
+      ]
+    },
+    {
+      "sourceRow": 0,
+      "name": "BoxDeco",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "8ee176b4-983f-5e13-8a74-49e14bf23ef4",
+      "confirmedByExport": [
+        "visitor"
+      ]
+    },
+    {
+      "sourceRow": 0,
+      "name": "女仆、森罗、音乐机综合展馆",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "c7f05d53-268e-5215-a1ae-58b43e6ec412",
+      "confirmedByExport": [
+        "visitor"
+      ]
+    },
+    {
+      "sourceRow": 0,
+      "name": "千灯海岸",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "d062a432-5358-4660-ba82-b60cdc064891",
+      "confirmedByExport": [
+        "visitor"
+      ]
+    },
+    {
+      "sourceRow": 0,
+      "name": "■■实验室",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "e6b4e0b5-531f-5d5c-997e-5e377b246111",
+      "confirmedByExport": [
+        "visitor"
+      ]
+    },
+    {
+      "sourceRow": 0,
+      "name": "玻璃瓶沙滩",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "ea0f1e1d-362e-5031-bf45-2ae7bad7b21b",
+      "confirmedByExport": [
+        "visitor"
+      ]
+    },
+    {
+      "sourceRow": 0,
+      "name": "KilaGraph",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "f098cab8-eb28-5aee-a9b0-167ba979f8cd",
+      "confirmedByExport": [
+        "visitor"
       ]
     }
-  ]
+  ],
+  "playerExport": {
+    "formatVersion": 1,
+    "generatedAt": "2026-09-10T07:49:52.606571700Z",
+    "sha256": "8e92c65656762699d50f6eb1f7c5acdd5e2664564035078ee1baf8f1dd6e0431",
+    "venueCount": 74,
+    "confirmedStampCount": 112,
+    "missingSlots": "user-approved expected collection; later actual discoveries extend it"
+  }
 }
