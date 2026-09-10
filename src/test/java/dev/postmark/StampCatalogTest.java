@@ -43,4 +43,21 @@ class StampCatalogTest {
         assertFalse(catalog.complete(id,List.of(stamp("visitor",true))));
         assertTrue(catalog.complete(id,List.of(stamp("visitor",true),stamp("expert",true))));
     }
+    @Test void UnsearchedVenuesKeepQuestionEvenWithPresetOrOwnedStamps() {
+        assertTrue(catalog.needsInspection(mcp,false,List.of()));
+        assertTrue(catalog.needsInspection(sky,false,List.of(stamp("visitor",true),stamp("expert",true))));
+        assertTrue(catalog.needsInspection(UUID.randomUUID(),false,List.of()));
+    }
+    @Test void EmptyOrPartialScanCannotEraseUnknownOrKnownUncollectedSlots() {
+        assertTrue(catalog.needsInspection(UUID.randomUUID(),true,List.of()));
+        assertTrue(catalog.needsInspection(mcp,true,List.of())); // ordinary is known to exist
+        assertTrue(catalog.needsInspection(sky,true,List.of(stamp("visitor",false)))); // master unknown
+        assertEquals(1,catalog.merge(mcp,List.of()).size());
+    }
+    @Test void QuestionClearsWithObservedStampsAndExplicitAbsenceWithoutClaimingOwnership() {
+        assertFalse(catalog.needsInspection(mcp,true,List.of(stamp("visitor",false))));
+        assertFalse(catalog.needsInspection(sky,true,List.of(stamp("visitor",false),stamp("expert",false))));
+        assertFalse(catalog.complete(mcp,List.of(stamp("visitor",false))));
+        assertFalse(catalog.complete(sky,List.of(stamp("visitor",false),stamp("expert",false))));
+    }
 }

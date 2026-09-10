@@ -17,13 +17,19 @@ public final class GuideBridge {
     private static String status="";
     private static final GuideSurvey SURVEY=new GuideSurvey();
     private GuideBridge() {}
+    public static void chunkLoaded(net.neoforged.neoforge.event.level.ChunkEvent.Load event) {
+        if(available() && event.getChunk() instanceof net.minecraft.world.level.chunk.LevelChunk chunk && chunk.getLevel().isClientSide())SURVEY.loaded(chunk);
+    }
+    public static void chunkUnloaded(net.neoforged.neoforge.event.level.ChunkEvent.Unload event) {
+        if(available() && event.getChunk() instanceof net.minecraft.world.level.chunk.LevelChunk chunk && chunk.getLevel().isClientSide())SURVEY.unloaded(chunk);
+    }
     public static List<GuideVenue> venues() { return venues; }
     public static String status() { return status; }
     public static boolean available() { return ModList.get().isLoaded("exhibition_portal"); }
     public static void tick() {
         var mc=Minecraft.getInstance();ticks++;
         if(connection!=mc.getConnection() || mc.level==null) {
-            connection=mc.getConnection();gallery=null;venues=List.of();status="";SURVEY.reset();
+            connection=mc.getConnection();gallery=null;venues=List.of();status="";if(mc.level==null)SURVEY.clear();else SURVEY.reset();
         }
         if(mc.level==null || mc.player==null || !available())return;
         try {

@@ -90,6 +90,8 @@ public final class TravelGuideScreen extends Screen {
     public double[] iconCenter(UUID id){var t=tile(id);return toScreen(t,t.x+t.size/2.0,t.y+t.size/2.0);}
     public double[] cornerCenter(UUID id,boolean expert){var t=tile(id);return toScreen(t,expert?t.x+t.size:t.x,t.y);}
     public double[] captionCenter(UUID id){var t=tile(id);return toScreen(t,t.x+t.size/2.0,t.y+t.size+13);}
+    public double[] inspectionCenter(UUID id){var t=tile(id);return toScreen(t,t.x+t.size/2.0,t.y-16);}
+    public double[] footprintCenter(UUID id){var t=tile(id);return toScreen(t,t.x+t.size-12,t.y+t.size-16);}
     private List<Tile> tiles(){return canvasTiles;}
     private boolean visible(Tile t){var p=toScreen(t,t.x+t.size/2.0,t.y+t.size/2.0);double r=(t.size+55)*view.zoom();return p[0]+r>bx&&p[0]-r<bx+bw&&p[1]+r>by&&p[1]-r<by+bh;}
     private List<Tile> paintOrder() {
@@ -164,6 +166,7 @@ public final class TravelGuideScreen extends Screen {
     private List<TravelJournal.KnownStamp> observed(UUID id) {return journal.stamps(id,session.album().stamps());}
     private List<TravelJournal.KnownStamp> stamps(UUID id) {return StampCatalog.bundled().merge(id,observed(id));}
     private boolean complete(UUID id) {return StampCatalog.bundled().complete(id,observed(id));}
+    public boolean needsInspection(UUID id) {return StampCatalog.bundled().needsInspection(id,journal.entry(id).searched(),observed(id));}
     private TravelJournal.KnownStamp stamp(UUID id,String kind) {return stamps(id).stream().filter(s->s.id().equals(kind)).findFirst().orElse(null);}
     private void picture(GuiGraphicsExtractor g,GuideVenue venue,int x,int y,int size) {
         Identifier id=Identifier.parse(venue.icon());
@@ -207,12 +210,23 @@ public final class TravelGuideScreen extends Screen {
         g.pose().popMatrix();
     }
     private static void footprint(GuiGraphicsExtractor g,int x,int y) {
-        g.pose().pushMatrix();g.pose().rotateAbout(.28f,x,y);
+        g.pose().pushMatrix();g.pose().rotateAbout(.12f,x,y);
+        g.fill(x-15,y-16,x+19,y+20,0x503D3022);
+        g.fill(x-16,y-18,x+16,y+18,0xFF785139);g.fill(x-18,y-16,x+18,y+16,0xFF785139);
+        g.fill(x-15,y-16,x+15,y+16,0xFFF3E4BA);g.fill(x-16,y-14,x+16,y+14,0xFFF3E4BA);
         String[] sole={"01110","11111","11111","11111","01110","01100","01100","00110","00110","00110"};
         for(int i=0;i<2;i++)for(int row=0;row<sole.length;row++)for(int col=0;col<5;col++)if(sole[row].charAt(col)=='1') {
-            int px=x+i*8+col,py=y+i*4+row;g.fill(px,py,px+1,py+1,0xBC77745A);
+            int px=x-12+i*14+col*2,py=y-13+i*7+row*2;g.fill(px,py,px+2,py+2,0xFF80503A);
         }
         g.pose().popMatrix();
+    }
+    private static void inspectionMark(GuiGraphicsExtractor g,int x,int y) {
+        g.fill(x-10,y-12,x+12,y+14,0x503D3022);
+        g.fill(x-11,y-14,x+11,y+12,0xFF92653B);
+        g.fill(x-9,y-12,x+9,y+10,0xFFF0CC79);
+        String[] mark={"01110","11011","00011","00110","00100","00000","00100"};
+        for(int row=0;row<mark.length;row++)for(int col=0;col<5;col++)if(mark[row].charAt(col)=='1')
+            g.fill(x-5+col*2,y-7+row*2,x-3+col*2,y-5+row*2,0xFF63432D);
     }
     private static void completeMark(GuiGraphicsExtractor g,int x,int y,int size) {
         int r=Math.max(10,size/3);g.pose().pushMatrix();g.pose().rotateAbout(-.19f,x,y);
@@ -237,8 +251,9 @@ public final class TravelGuideScreen extends Screen {
             scrap(g,tile,hot);
             var known=stamps(tile.venue.id());
             if(complete(tile.venue.id())){g.fill(tile.x,tile.y,tile.x+tile.size,tile.y+tile.size,0x50E4D3A5);completeMark(g,tile.x+tile.size/2,tile.y+tile.size/2,tile.size);}
-            else if(journal.entry(tile.venue.id()).searched())footprint(g,tile.x+tile.size-12,tile.y+tile.size-13);
+            if(journal.entry(tile.venue.id()).searched())footprint(g,tile.x+tile.size-12,tile.y+tile.size-16);
             for(String kind:List.of("visitor","expert")){var s=stamp(tile.venue.id(),kind);if(s!=null)stampPicture(g,s,kind.equals("visitor")?tile.x:tile.x+tile.size,tile.y,24);}
+            if(needsInspection(tile.venue.id()))inspectionMark(g,tile.x+tile.size/2,tile.y-16);
             long extra=known.stream().filter(s->!s.id().equals("visitor")&&!s.id().equals("expert")).count();
             if(extra>0){g.fill(tile.x-8,tile.y+tile.size-10,tile.x+11,tile.y+tile.size+2,0xFFDFC995);g.text(font,Component.literal("+"+extra),tile.x-6,tile.y+tile.size-8,INK,false);}
             g.pose().popMatrix();
@@ -261,7 +276,7 @@ public final class TravelGuideScreen extends Screen {
         String desc=venue.description();if(desc.equals("@unset"))desc="";
         g.text(font,Component.literal(font.plainSubstrByWidth(desc,w-28)),x+14,y+30,0xFF8B866A,false);
         var known=stamps(detail);var preset=StampCatalog.bundled().entry(detail);
-        String note=complete(detail)?(preset==null?"普通与大师均已收集":"清单内已集齐"):journal.entry(detail).searched()?"附近已检索":"尚未检索";
+        String note=complete(detail)?(preset==null?"普通与大师均已收集":"清单内已集齐"):journal.entry(detail).searched()?(needsInspection(detail)?"已检索 · 仍有未知章位":"已检索"):"尚未检索";
         if(preset!=null)note+=" · 玩家清单 "+StampCatalog.bundled().date();
         g.text(font,Component.literal(font.plainSubstrByWidth(note,w-28)),x+14,y+46,0xFF7A8164,false);
         detailPage=Math.min(detailPage,Math.max(0,(known.size()-1)/detailCapacity()));
@@ -294,6 +309,8 @@ public final class TravelGuideScreen extends Screen {
         for(var t:paintOrder().reversed()) {
             double cx=t.x+t.size/2.0,cy=t.y+t.size/2.0,k=hoverScale(t.venue.id());
             var local=t.local(cx+(wx-cx)/k,cy+(wy-cy)/k);double tx=local[0],ty=local[1];
+            if(needsInspection(t.venue.id()) && Math.abs(tx-(t.x+t.size/2.0))<=12 && Math.abs(ty-(t.y-16))<=15)return new Hit("inspection",t.venue.id(),null);
+            if(journal.entry(t.venue.id()).searched() && Math.abs(tx-(t.x+t.size-12))<=18 && Math.abs(ty-(t.y+t.size-16))<=18)return new Hit("footprint",t.venue.id(),null);
             for(String kind:List.of("visitor","expert"))if(stamp(t.venue.id(),kind)!=null && Math.abs(tx-(kind.equals("visitor")?t.x:t.x+t.size))<=17&&ty>=t.y-25&&ty<=t.y+17)return new Hit("stamp",t.venue.id(),kind);
             boolean extra=stamps(t.venue.id()).stream().anyMatch(s->!s.id().equals("visitor")&&!s.id().equals("expert"));
             if(extra&&tx>=t.x-9&&tx<=t.x+13&&ty>=t.y+t.size-11&&ty<=t.y+t.size+3)return new Hit("details",t.venue.id(),null);
@@ -308,6 +325,8 @@ public final class TravelGuideScreen extends Screen {
         return switch(hit.action){
             case "travel" -> venue!=null?(venue.canTeleport()?"前往 "+venue.name():"这个展馆尚未设置传送点"):"";
             case "details" -> "查看展馆介绍";
+            case "inspection" -> journal.entry(hit.venue).searched()?"已检索，仍有章位未确认 · 点击查看":"章位尚未检索 · 点击查看";
+            case "footprint" -> "已进行区块检索 · 点击查看结果";
             case "stamp" -> {var s=stamp(hit.venue,hit.stamp);yield s==null?"":(s.id().equals("visitor")?"普通章":s.id().equals("expert")?"大师章":s.id())+(s.owned()?" · 点击拿去盖印":s.item()==null?" · 玩家清单，尚未实地发现":" · 已发现，尚未获得");}
             case "close" -> "收起漫游志";case "dismiss" -> "收起介绍";case "detailPrev" -> "上一页";case "detailNext" -> "下一页";case "zoomIn" -> "放大";case "zoomOut" -> "缩小";case "fit" -> "查看全部展馆";case "desk" -> "打开盖章工作台";default -> "";
         };
@@ -337,7 +356,7 @@ public final class TravelGuideScreen extends Screen {
             case "zoomIn" -> {pressed=null;view.zoomAt(bw/2.0,bh/2.0,1.3);}case "zoomOut" -> {pressed=null;view.zoomAt(bw/2.0,bh/2.0,1/1.3);}
             case "fit" -> {pressed=null;view.fit(false);}case "desk" -> PostcardScreen.show(this,null);
             case "detailNext" -> detailPage=Math.min(Math.max(0,(stamps(detail).size()-1)/detailCapacity()),detailPage+1);case "detailPrev" -> detailPage=Math.max(0,detailPage-1);
-            case "details" -> {detail=target.venue;detailPage=0;}
+            case "details","inspection","footprint" -> {detail=target.venue;detailPage=0;}
             case "travel" -> {if(GuideBridge.teleport(target.venue))minecraft.setScreen(null);else error=GuideBridge.status();}
             case "stamp" -> {
                 var s=stamp(target.venue,target.stamp);

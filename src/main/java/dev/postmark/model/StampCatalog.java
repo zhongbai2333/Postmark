@@ -37,6 +37,17 @@ public final class StampCatalog {
     public boolean complete(UUID venue,List<TravelJournal.KnownStamp> observed) {
         var entry=entry(venue);return entry==null?TravelJournal.regularComplete(observed):entry.complete(observed);
     }
+    /** An empty scan is not evidence of absence; only explicit catalog absence resolves an unseen slot. */
+    public boolean needsInspection(UUID venue,boolean searched,List<TravelJournal.KnownStamp> observed) {
+        if(!searched)return true;
+        var entry=entry(venue);
+        for(String id:List.of("visitor","expert")) {
+            if(observed.stream().anyMatch(s->s.id().equals(id)))continue;
+            Presence expected=entry==null?Presence.UNKNOWN:id.equals("visitor")?entry.visitor():entry.expert();
+            if(expected!=Presence.ABSENT)return true;
+        }
+        return false;
+    }
     public static StampCatalog bundled() {return Bundled.INSTANCE;}
     private static final class Bundled {private static final StampCatalog INSTANCE=load();}
     private static StampCatalog load() {

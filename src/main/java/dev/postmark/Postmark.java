@@ -22,6 +22,8 @@ public final class Postmark {
         bus.addListener(this::registerKeys);
         NeoForge.EVENT_BUS.addListener(this::tick);
         NeoForge.EVENT_BUS.addListener(dev.postmark.client.GuideEntry::initScreen);
+        NeoForge.EVENT_BUS.addListener(dev.postmark.compat.GuideBridge::chunkLoaded);
+        NeoForge.EVENT_BUS.addListener(dev.postmark.compat.GuideBridge::chunkUnloaded);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderFrameEvent.Post event) -> dev.postmark.render.ItemStampCapture.afterFrame());
     }
     private void registerKeys(RegisterKeyMappingsEvent event) {

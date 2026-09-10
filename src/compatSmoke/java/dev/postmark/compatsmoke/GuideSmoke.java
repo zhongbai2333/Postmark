@@ -41,7 +41,8 @@ public final class GuideSmoke {
     private static CompletableFuture<?> work;
     private static TravelGuideScreen guide;
     private static String shot;
-    private static BlockPos visitor,expert,extra;
+    private static BlockPos visitor,expert,extra,remote,unloaded;
+    private static final UUID REMOTE=new UUID(0,13);
     private static boolean searchedAtArrival;
     private static double zoomBefore,anchorX,anchorY;
     private static void next(){stage++;at=ticks;}
@@ -49,9 +50,12 @@ public final class GuideSmoke {
     private static void click(double x,double y){var mc=Minecraft.getInstance();var screen=mc.screen;screen.mouseClicked(mouse(x,y),false);if(mc.screen==screen)screen.mouseReleased(mouse(x,y));}
     private static void open() {TravelGuideScreen.show(null);guide=(TravelGuideScreen)Minecraft.getInstance().screen;}
     private static void counter(net.minecraft.server.level.ServerLevel level,BlockPos pos,String id,Identifier item) {
+        counter(level,pos,id,item,TARGET);
+    }
+    private static void counter(net.minecraft.server.level.ServerLevel level,BlockPos pos,String id,Identifier item,UUID venue) {
         var state=ExhibitionPortal.STAMPING_COUNTER.get().defaultBlockState();level.setBlock(pos,state,3);
         var entity=(StampingCounterBlockEntity)level.getBlockEntity(pos);
-        try{for(var e:Map.of("exhibition",TARGET,"stampID",id,"item",item).entrySet()){var field=StampingCounterBlockEntity.class.getDeclaredField(e.getKey());field.setAccessible(true);field.set(entity,e.getValue());}}
+        try{for(var e:Map.of("exhibition",venue,"stampID",id,"item",item).entrySet()){var field=StampingCounterBlockEntity.class.getDeclaredField(e.getKey());field.setAccessible(true);field.set(entity,e.getValue());}}
         catch(Exception e){throw new RuntimeException(e);}
         entity.setChanged();level.sendBlockUpdated(pos,state,state,3);
     }
@@ -69,7 +73,7 @@ public final class GuideSmoke {
                 mc.options.pauseOnLostFocus=false;mc.options.guiScale().set(2);mc.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);next();
                 mc.createWorldOpenFlows().createFreshLevel("Postmark-guide-"+System.currentTimeMillis(),new LevelSettings("Postmark synthetic guide fixture",GameType.CREATIVE,new LevelSettings.DifficultySettings(Difficulty.PEACEFUL,false,false),true,WorldDataConfiguration.DEFAULT),new WorldOptions(1879L,false,false),WorldPresets::createFlatWorldDimensions,new TitleScreen());
             }else if(stage==1 && mc.player!=null && mc.level!=null && mc.screen==null && GuideBridge.venues().size()==15){
-                y=mc.player.blockPosition().getY();targetX=mc.player.blockPosition().getX()+96;
+                y=mc.player.blockPosition().getY();targetX=mc.player.blockPosition().getX()+512;
                 visitor=new BlockPos(targetX+2,y,32);expert=new BlockPos(targetX-2,y,32);extra=new BlockPos(targetX,y,34);
                 work=mc.getSingleplayerServer().submit(()->{
                     var player=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
@@ -92,8 +96,9 @@ public final class GuideSmoke {
                 click(GuideEntry.deskX(mc.screen.width),GuideEntry.deskY(mc.screen.height));if(!(mc.screen instanceof TravelGuideScreen))throw new AssertionError("Mouse desk entry failed");guide=(TravelGuideScreen)mc.screen;next();
             }else if(stage==4 && ticks-at==8){var p=guide.fitCenter();click(p[0],p[1]);
             }else if(stage==4 && ticks-at==18){shot="02-magazine-overview.png";
+                if(!guide.needsInspection(TARGET) || !guide.needsInspection(PRESET))throw new AssertionError("Unsearched galleries need a question mark");
             }else if(stage==4 && ticks-at==20){
-                var p=guide.captionCenter(PRESET);click(p[0],p[1]);shot="14-preset-detail.png";
+                var p=guide.inspectionCenter(PRESET);click(p[0],p[1]);shot="14-preset-detail.png";
             }else if(stage==4 && ticks-at>22){
                 if(!PRESET.equals(guide.detailVenue()))throw new AssertionError("Preset detail did not open");
                 var session=ClientSession.get();var raw=session.journal().stamps(PRESET,session.album().stamps());
@@ -129,13 +134,17 @@ public final class GuideSmoke {
                 if(ClientSession.get().journal().entry(TARGET).searched())throw new AssertionError("Sending a teleport must not mark searched");next();
             }else if(stage==7 && Math.abs(mc.player.getX()-(targetX+.5))<1 && Math.abs(mc.player.getZ()-32.5)<1){
                 searchedAtArrival=ClientSession.get().journal().entry(TARGET).searched();if(searchedAtArrival)throw new AssertionError("Arrival alone granted footprint");next();
-            }else if(stage==8 && ClientSession.get().journal().entry(TARGET).searched()){
+            }else if(stage==8 && ClientSession.get().journal().entry(TARGET).searched() && ClientSession.get().journal().entry(TARGET).stamps().size()==2){
                 var session=ClientSession.get();var record=session.journal().entry(TARGET);
                 if(record.stamps().size()!=2)throw new AssertionError("Nearby visitor/expert discovery or duplicate counter de-duplication failed: "+record);
                 if(!session.journal().stamps(TARGET,session.album().stamps()).stream().noneMatch(TravelJournal.KnownStamp::owned))throw new AssertionError("Discovery granted a stamp");
                 if(!new TravelJournalStore(session.store().directory()).load().equals(session.journal()))throw new AssertionError("Survey not persisted");
                 open();next();
             }else if(stage==9 && ticks-at==10){shot="05-surveyed-uncollected.png";
+                if(guide.needsInspection(TARGET))throw new AssertionError("Observed visitor and expert should resolve question");
+                var p=guide.footprintCenter(TARGET);click(p[0],p[1]);
+                if(!TARGET.equals(guide.detailVenue()))throw new AssertionError("Footprint must open details without teleport");
+                guide.onClose();
             }else if(stage==9 && ticks-at>15){
                 mc.setScreen(null);mc.gameMode.useItemOn(mc.player,InteractionHand.MAIN_HAND,new BlockHitResult(Vec3.atCenterOf(visitor),Direction.UP,visitor,false));next();
             }else if(stage==10 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(TARGET+"/visitor"))){
@@ -174,6 +183,7 @@ public final class GuideSmoke {
                 var entry=ClientSession.get().journal().entry(EMPTY);if(!entry.searched()||!entry.stamps().isEmpty())throw new AssertionError("Empty survey semantics");
                 open();next();
             }else if(stage==20 && ticks-at==10){shot="10-final-magazine.png";
+                if(!guide.needsInspection(EMPTY))throw new AssertionError("Empty scan must not prove absent stamps");
             }else if(stage==20 && ticks-at>15){
                 mc.options.guiScale().set(3);next();
             }else if(stage==21 && ticks-at==10){shot="11-collage-gui3.png";
@@ -183,7 +193,26 @@ public final class GuideSmoke {
                 guide.onClose();if(guide.canvasVenueCount()!=15)throw new AssertionError("Resizing dropped venues from the canvas");
                 mc.options.guiScale().set(2);next();
             }else if(stage==22 && ticks-at>10){
-                Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"PASS: real SMU 1.1.12 gallery icons and metadata; bundled preset ghosts without discovery or ownership; all 15 venues on one canvas and every caption; cursor-anchored smooth zoom; native mouse event hover enlargement; canvas drag without teleport; inventory stamp desk and return; canvas GUI 2 and 3; rotated caption and corner targets; desk and inventory mouse entries; isolated stamp hit targets; drag cancellation; real UUID teleport; SMU #visited and arrival alone never mark searched; completed loaded-chunk survey records two unowned stamps and de-duplicates counters; separate journal persists; actual counter interactions collect visitor/expert; regular completion; newly discovered third stamp revokes completion; owned stamp pickup and postcard imprint; empty survey has no invented slots. Synthetic exhibition fixtures, not a production server.");
+                mc.setScreen(null);remote=mc.player.blockPosition().offset(96,0,0);unloaded=remote.offset(4096,0,0);
+                if(mc.level.getChunkSource().getChunk(remote.getX()>>4,remote.getZ()>>4,net.minecraft.world.level.chunk.status.ChunkStatus.FULL,false)==null)throw new AssertionError("Remote test chunk must already be loaded");
+                work=mc.getSingleplayerServer().submit(()->{
+                    var level=mc.getSingleplayerServer().overworld();
+                    counter(level,remote,"visitor",Identifier.parse("minecraft:paper"),REMOTE);
+                    counter(level,unloaded,"expert",Identifier.parse("minecraft:emerald"),REMOTE);
+                });next();
+            }else if(stage==23 && work.isDone() && ClientSession.get().journal().entry(REMOTE).stamps().stream().anyMatch(s->s.id().equals("visitor"))){
+                work.join();var entry=ClientSession.get().journal().entry(REMOTE);
+                if(Math.abs(mc.player.getX()-remote.getX())<64 || !entry.searched() || entry.stamps().size()!=1)throw new AssertionError("Loaded-chunk survey range or footprint failed: "+entry);
+                if(mc.level.getChunkSource().getChunk(unloaded.getX()>>4,unloaded.getZ()>>4,net.minecraft.world.level.chunk.status.ChunkStatus.FULL,false)!=null)throw new AssertionError("Unloaded test chunk was requested");
+                if(!ClientSession.get().journal().stamps(REMOTE,ClientSession.get().album().stamps()).stream().noneMatch(TravelJournal.KnownStamp::owned))throw new AssertionError("Remote discovery granted ownership");
+                work=mc.getSingleplayerServer().submit(()->counter(mc.getSingleplayerServer().overworld(),remote,"visitor",Identifier.parse("minecraft:diamond"),REMOTE));
+                // Moving more than the old eight-block limit must not discard observations.
+                mc.player.setPos(mc.player.getX()+12,mc.player.getY(),mc.player.getZ());next();
+            }else if(stage==24 && work.isDone() && ClientSession.get().journal().entry(REMOTE).stamps().stream().anyMatch(s->s.item().equals("minecraft:diamond"))){
+                work.join();if(ClientSession.get().journal().entry(REMOTE).stamps().size()!=1)throw new AssertionError("Repeat scan duplicated a stamp or inspected an unloaded chunk");
+                next();
+            }else if(stage==25){
+                Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"PASS: unsearched preset and ordinary venues show question; observed slots remove question; empty survey retains question; question and enlarged footprint open details; loaded client chunk discovery 96 blocks away; unloaded server counter ignored; repeat scan updates artwork after movement; real SMU 1.1.12 gallery icons and metadata; bundled preset ghosts without discovery or ownership; all 15 venues on one canvas and every caption; cursor-anchored smooth zoom; native mouse event hover enlargement; canvas drag without teleport; inventory stamp desk and return; canvas GUI 2 and 3; rotated caption and corner targets; desk and inventory mouse entries; isolated stamp hit targets; drag cancellation; real UUID teleport; SMU #visited and arrival alone never mark searched; completed loaded-chunk survey records two unowned stamps and de-duplicates counters; separate journal persists; actual counter interactions collect visitor/expert; regular completion; newly discovered third stamp revokes completion; owned stamp pickup and postcard imprint; empty survey has no invented slots. Synthetic exhibition fixtures, not a production server.");
                 mc.stop();stage=99;
             }
         }catch(Throwable e){Postmark.LOGGER.error("GUIDE SMOKE FAILED stage="+stage,e);try{Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"FAIL stage="+stage+": "+e);}catch(Exception ignored){}mc.stop();stage=99;}
