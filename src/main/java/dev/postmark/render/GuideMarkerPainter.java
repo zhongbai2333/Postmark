@@ -53,9 +53,10 @@ public final class GuideMarkerPainter {
         for(int row=0;row<mark.length;row++)for(int col=0;col<5;col++)if(mark[row].charAt(col)=='1')fill(g,-5+col*2,-7+row*2,-3+col*2,-5+row*2,0xFF63432D);
     }
     private static void complete(Graphics2D g) {
-        var pose=g.getTransform();g.rotate(-.15);
+        // Keep adjacent scanlines on the same pixel grid; rotating each row separately leaves seams.
+        // The GUI rotates the completed texture as a single quad instead.
         disc(g,1,2,13,0x60413424);disc(g,0,0,13,0xFFF7EAC6);disc(g,0,0,11,0xFF356647);disc(g,0,0,9,0xFFF6EBD0);
-        line(g,-6,0,-2,4);line(g,-2,4,6,-5);g.setTransform(pose);
+        line(g,-6,0,-2,4);line(g,-2,4,6,-5);
     }
     private static void disc(Graphics2D g,int x,int y,int r,int color) {
         for(int row=-r;row<=r;row++){int half=(int)Math.sqrt(r*r-row*row);fill(g,x-half,y+row,x+half+1,y+row+1,color);}

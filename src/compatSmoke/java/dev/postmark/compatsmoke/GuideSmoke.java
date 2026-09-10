@@ -188,6 +188,7 @@ public final class GuideSmoke {
                 mc.setScreen(null);mc.gameMode.useItemOn(mc.player,InteractionHand.MAIN_HAND,new BlockHitResult(Vec3.atCenterOf(expert),Direction.UP,expert,false));next();
             }else if(stage==11 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(TARGET+"/expert"))){
                 if(!TravelJournal.regularComplete(ClientSession.get().journal().stamps(TARGET,ClientSession.get().album().stamps())))throw new AssertionError("Regular completion missing");open();next();
+            }else if(stage==12 && ticks-at==1){var p=guide.iconCenter(TARGET);guide.mouseScrolled(p[0],p[1],0,8);
             }else if(stage==12 && ticks-at==10){shot="06-regular-complete.png";
                 var p=guide.inspectionCenter(TARGET);click(p[0],p[1]);
                 if(!TARGET.equals(guide.detailVenue()))throw new AssertionError("Completion tag must open venue details");

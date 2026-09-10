@@ -197,7 +197,9 @@ public final class TravelGuideScreen extends Screen {
         minecraft.getTextureManager().register(id,new DynamicTexture(()->"Guide "+kind,pixels));return id;
     }
     private void marker(GuiGraphicsExtractor g,int type,int x,int y) {
+        g.pose().pushMatrix();if(type==2)g.pose().rotateAbout(-.15f,x,y);
         g.blit(markers,x-32,y-32,x+32,y+32,type/3f,(type+1)/3f,0f,1f);
+        g.pose().popMatrix();
     }
     private Identifier artwork(TravelJournal.KnownStamp stamp,boolean load) {
         if(stamp.asset()==null && stamp.item()==null)return null;

@@ -1,5 +1,11 @@
 # 验证记录
 
+## alpha.26 集齐圆勾修复（2026-09-10）
+
+- 最终 `./gradlew build` 通过，59 项单元测试零失败、零跳过；正式 JAR 和源码包不含测试夹具或 SMU 本体。
+- 新增像素回归：检查圆勾内部 716 个像素，旧版逐行旋转导致 17 个外层颜色漏入；改为完整纹理后整体旋转，漏色为零。
+- `./gradlew runClient -PcompatSmoke -PguideSmoke` 通过；实际 Minecraft / SMU 合成世界截图检查 142% 放大的圆勾，圆环完整、无原先碎点，顶部标识点击和单章/额外章收集状态继续通过。截图为 `docs/images/travel-clean-completion.png`。
+
 ## alpha.25 收藏册书页底纹（2026-09-10）
 
 - 最终 `./gradlew build` 通过，58 项单元测试零失败、零跳过；正式 JAR 与源码包不含测试夹具或 SMU 本体。
