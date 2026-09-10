@@ -137,7 +137,7 @@ public final class SignMeUpBridge {
         }));
     }
     @SuppressWarnings("unchecked")
-    private static Map<?,?> gallery() throws Exception {
+    static Map<?,?> gallery() throws Exception {
         Object parameter = Class.forName(ROOT+"client.EPClient").getField("GALLERY_LOOKUP").get(null);
         return (Map<?,?>)readLayout(parameter);
     }
@@ -150,7 +150,7 @@ public final class SignMeUpBridge {
         throw new NoSuchMethodException("RenderAccess.get");
     }
     private static List<?> stamps(Object exhibition) throws Exception { return (List<?>)call(call(exhibition,"footprint"),"stamps"); }
-    private static Object call(Object obj, String method) throws Exception { return obj.getClass().getMethod(method).invoke(obj); }
+    static Object call(Object obj, String method) throws Exception { return obj.getClass().getMethod(method).invoke(obj); }
     private static MapPlacement.Rect position() throws Exception {
         var mc = Minecraft.getInstance();
         try (var reader = mc.getResourceManager().openAsReader(Identifier.parse("exhibition_portal:textures/gui/map.json"))) {

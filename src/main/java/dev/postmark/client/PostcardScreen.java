@@ -296,9 +296,11 @@ public final class PostcardScreen extends Screen {
         DeskControls.draw(g,DeskControls.Kind.PLAIN_PAPER,(int)(cardX+cardW-48),(int)cardY-26,card().background()!=null);
         DeskControls.draw(g,DeskControls.Kind.FOLDER,(int)(cardX+cardW+32),(int)(cardY+cardH-54),true);
         DeskControls.draw(g,DeskControls.Kind.CLOSE,width-22,22,true);
+        GuideEntry.draw(g,GuideEntry.deskX(width),GuideEntry.deskY(height),GuideEntry.hit(mouseX,mouseY,width,height));
         if(hover.isEmpty() && overCard(mouseX,mouseY)) hover=dragging?(isTicket(tool)?"左键放下纪念票 · 右键拖动调大小 · 滚轮旋转":"左键盖印 · 右键拖动调大小 · 滚轮旋转"):erasing?"点击擦除最上层印迹":"拖入 PNG/JPG 更换底片";
         String tagHint=collectionTag.hint(mouseX,mouseY);if(!tagHint.isEmpty() && !dragging && !erasing) hover=tagHint;
         if(bookHit(mouseX,mouseY)) hover="打开收集册，翻阅或删除明信片";
+        if(GuideEntry.hit(mouseX,mouseY,width,height))hover="展开漫游志";
         if(DeskControls.hit(mouseX,mouseY,cardX+cardW-14,cardY-26)) hover="新建信纸 · N";
         if(DeskControls.hit(mouseX,mouseY,cardX+cardW-48,cardY-26)) hover="恢复素色信纸 · B";
         if(DeskControls.hit(mouseX,mouseY,cardX+cardW+32,cardY+cardH-54)) hover="打开导出目录 · F";
@@ -309,6 +311,12 @@ public final class PostcardScreen extends Screen {
         if(bag!=null && bag.isOpen()) { bag.layout(width,height);bag.render(g,mouseX,mouseY,partialTick,session.album().stamps()); }
     }
     private boolean bookHit(double x,double y) { return Math.abs(x-(cardX+cardW+34))<=27 && Math.abs(y-(cardY-26))<=28; }
+    public void pickUpCollected(String key) {
+        session.album().stamps().stream().filter(s->s.key().equals(key)).findFirst().ifPresent(s->{
+            takeFromBag(s);bagPickup=false;clickHeld=false;
+            toolX=minecraft.mouseHandler.getScaledXPos(minecraft.getWindow());toolY=minecraft.mouseHandler.getScaledYPos(minecraft.getWindow());
+        });
+    }
     private boolean bagClaspHit(double x,double y) { return x>=0 && x<64 && bagY(y)>=0 && bagY(y)<36; }
     private void openBag() {
         collectionTag.close();
@@ -464,6 +472,7 @@ public final class PostcardScreen extends Screen {
         }
         if(e.button()==0 && bagClaspHit(e.x(),e.y())) { openBag();return true; }
         if(e.button()==0 && !resizing) {
+            if(GuideEntry.hit(e.x(),e.y(),width,height)) {if(dragging)returnTool(toolX,toolY);erasing=false;TravelGuideScreen.show(this);return true;}
             if(DeskControls.hit(e.x(),e.y(),width-22,22)) { if(dragging) returnTool(toolX,toolY);else onClose();return true; }
             if(bookHit(e.x(),e.y())) { minecraft.setScreen(new PostcardAlbumScreen(this,session));return true; }
             if(DeskControls.hit(e.x(),e.y(),cardX+cardW-14,cardY-26)) { edit(()->turnTo(session.album().addCard(),1));return true; }

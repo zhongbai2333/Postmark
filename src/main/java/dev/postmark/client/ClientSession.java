@@ -13,6 +13,7 @@ public final class ClientSession {
     private final String scope;
     private final AlbumStore store;
     private Album album;
+    private TravelJournal journal;
     private ClientSession(String scope, AlbumStore store) throws IOException {
         this.scope = scope; this.store = store; album = store.load();
         // Retire only the two built-in shelf entries. Existing imprints and their assets remain intact.
@@ -41,6 +42,14 @@ public final class ClientSession {
     public static void clear() { active = null; }
     public Album album() { return album; }
     public AlbumStore store() { return store; }
+    public TravelJournal journal() throws IOException {
+        if(journal==null)journal=new dev.postmark.storage.TravelJournalStore(store.directory()).load();
+        return journal;
+    }
+    public void updateJournal(TravelJournal next) throws IOException {
+        if(next.equals(journal()))return;
+        new dev.postmark.storage.TravelJournalStore(store.directory()).save(next);journal=next;
+    }
     public void update(Album next) throws IOException {
         store.save(next); // Commit the in-memory state only after the atomic save succeeds.
         album = next;

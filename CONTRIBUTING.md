@@ -43,6 +43,8 @@ docs/           操作、设计及验证说明
 
 使用独立的 `run-compat-smoke/` 创建新世界；检查 `compat-result.txt` 的 `PASS:`。不要对测试使用生产存档。正式打包使用不带这些属性的 `build`，构建脚本禁止带测试属性制作发行 JAR，并额外排除测试类和夹具。
 
+漫游志专项：`./gradlew runClient -PcompatSmoke -PguideSmoke`。同一独立实例内创建新的测试世界，检查 `run-compat-smoke/guide-result.txt` 与 `guide-shots/`。夹具包含 15 个声明展馆及明确合成的测试馆图，验证原生传送、检索时序、普通/大师与第三枚章、空检索、玩家预设、画布缩放与拖动、取章盖印，以及背包/工作台鼠标入口。测试夹具会跳过该实例首次辅助功能介绍，不修改玩家的日常游戏实例。
+
 ## 提交改动
 
 欢迎先用 issue 描述问题，附 Minecraft、NeoForge、SMU 版本和复现步骤。不要上传服务器地址、玩家收藏、私人照片、签名或完整游戏目录；日志在分享前去掉个人信息。

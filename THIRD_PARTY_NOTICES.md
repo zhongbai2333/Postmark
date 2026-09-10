@@ -18,3 +18,7 @@ The MIT license in [LICENSE](LICENSE) applies to Postmark's source code and orig
 - Stamp images captured from game items and server resource packs retain their creators' rights. Player captures, postcards and signatures are stored locally and are not part of this repository.
 
 Postmark's paper layout, pixel alphabet, tool artwork, practice icons and compatibility-test images are original programmatic artwork covered by MIT. The colored stamp pile in the documentation is generated test artwork, not a collection of official event stamps.
+
+## Community stamp catalog
+
+The bundled TeaCon 2026 catalog records stamp-presence facts from the player-maintained [TeaCon2026 收集隐藏一览表](https://docs.qq.com/sheet/DV2FjUVdIWEZEeHdk?tab=a68hpd), snapshot 2026-09-10, revision 2346. Venue UUID and mod identity mappings derive from [teaconmc/Puer](https://github.com/teaconmc/Puer/tree/9993186cab48a2e41f757878b3458d08e25617cd/2026), published under the Unlicense. No spreadsheet screenshots, player artwork, account metadata or session data are bundled. These community observations are not an official completeness guarantee.

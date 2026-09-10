@@ -41,7 +41,7 @@ public final class CompatibilitySmoke {
     private static CompletableFuture<java.awt.image.BufferedImage> paperCapture, pngCapture;
     private static void next() { stage++; stageAt=ticks; }
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
-        if(!Boolean.getBoolean("postmark.compatSmoke")) return;
+        if(!Boolean.getBoolean("postmark.compatSmoke") || Boolean.getBoolean("postmark.guideSmoke")) return;
         var mc=Minecraft.getInstance(); ticks++;
         try {
             if(ticks>2400) throw new AssertionError("Compatibility test timed out at stage "+stage);

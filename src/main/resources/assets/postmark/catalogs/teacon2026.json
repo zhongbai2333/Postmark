@@ -1,0 +1,799 @@
+{
+  "version": 1,
+  "event": "TeaCon 2026",
+  "date": "2026-09-10",
+  "source": "https://docs.qq.com/sheet/DV2FjUVdIWEZEeHdk?tab=a68hpd",
+  "sourceRevision": 2346,
+  "identitySource": "https://github.com/teaconmc/Puer/blob/9993186cab48a2e41f757878b3458d08e25617cd/2026/data/exhibition_portal/galleries.json",
+  "entries": [
+    {
+      "sourceRow": 2,
+      "plot": "A2",
+      "name": "街头主义 Streetism",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "b9a7f388-eb58-5670-93ad-7fb21f462b49",
+      "mods": [
+        "thestreetism"
+      ]
+    },
+    {
+      "sourceRow": 3,
+      "plot": "A4",
+      "name": "神州宇宙\n疯狂粒子 / 沉浸语音",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "fc67afd6-b7b3-519b-a733-e7064a6a1414",
+      "mods": [
+        "channel",
+        "madparticle"
+      ]
+    },
+    {
+      "sourceRow": 4,
+      "plot": "A5",
+      "name": "贴贴",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "95e2e7db-4496-53b0-b80b-df0bcfe65989",
+      "mods": [
+        "nestle"
+      ]
+    },
+    {
+      "sourceRow": 5,
+      "plot": "A6",
+      "name": "导航",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "a8814755-54c1-57cb-b778-120f55b2f589",
+      "mods": [
+        "simple_path_finder"
+      ]
+    },
+    {
+      "sourceRow": 6,
+      "plot": "A7",
+      "name": "贸易台",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "49a31d8c-c7d1-5156-8738-91692351a8f5",
+      "mods": [
+        "trading_table"
+      ]
+    },
+    {
+      "sourceRow": 7,
+      "plot": "A8",
+      "name": "MCP",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "b8509a22-7c38-593d-b3fc-e2a2fe13bbe4",
+      "mods": [
+        "mcpmod"
+      ]
+    },
+    {
+      "sourceRow": 8,
+      "plot": "B1",
+      "name": "动量",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "99837247-f2c2-5433-8b22-9a759fda4bf3",
+      "mods": [
+        "momentum"
+      ]
+    },
+    {
+      "sourceRow": 9,
+      "plot": "B2",
+      "name": "光遇",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "493f4bbe-20c0-5d8b-bf29-ac3ce6d84076",
+      "mods": [
+        "thatskyinteractions"
+      ]
+    },
+    {
+      "sourceRow": 10,
+      "plot": "B3",
+      "name": "inkraft/女友",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "b754a17b-909f-5a12-92c8-0fd352fbfd8b",
+      "mods": [
+        "girlfriends",
+        "inkraft"
+      ]
+    },
+    {
+      "sourceRow": 11,
+      "plot": "B4",
+      "name": "伊卡洛斯之翼",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "f0c61045-37b5-5eaa-b4a8-3dcb2bbe8957",
+      "mods": [
+        "locusazzurro_icaruswings"
+      ]
+    },
+    {
+      "sourceRow": 12,
+      "plot": "B5",
+      "name": "蜂会/节气/圣脾",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "c7d187b7-1296-5ab7-bcb1-f1fe398da987",
+      "mods": [
+        "beecrasy",
+        "eclipticseasons",
+        "shengpi"
+      ]
+    },
+    {
+      "sourceRow": 13,
+      "plot": "B6",
+      "name": "十二木砧",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "c7b3aa34-a5f1-5fcc-9322-9a13dfc4cc57",
+      "mods": [
+        "woodenanvil"
+      ]
+    },
+    {
+      "sourceRow": 14,
+      "plot": "B7",
+      "name": "糖果工坊",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "6ee62028-d78a-5041-b0d7-2763e9d195ec",
+      "mods": [
+        "ccw"
+      ]
+    },
+    {
+      "sourceRow": 15,
+      "plot": "B8",
+      "name": "会饮/雀食",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "8e6b33cd-c568-5459-b8a9-2eb3aef7648e",
+      "mods": [
+        "convivium",
+        "neo_mystias_izakaya"
+      ]
+    },
+    {
+      "sourceRow": 16,
+      "plot": "B9",
+      "name": "群青",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "33362f82-c266-5c69-bb2b-7eccde14d76c",
+      "mods": [
+        "ultramarine"
+      ]
+    },
+    {
+      "sourceRow": 17,
+      "plot": "BX",
+      "name": "Letter，Signal，Phone",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "40935e04-a43c-579d-85bf-58ed171b377a",
+      "mods": [
+        "letter_signal_phone"
+      ]
+    },
+    {
+      "sourceRow": 18,
+      "plot": "",
+      "name": "ashihara 苇原",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "2b340aec-df29-5d73-968a-9ea3e41e75da",
+      "mods": [
+        "ashihara"
+      ]
+    },
+    {
+      "sourceRow": 19,
+      "plot": "",
+      "name": "dynamictrees",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "3a577a32-8907-5fc7-8284-a783ca84acee",
+      "mods": [
+        "dynamictrees"
+      ]
+    },
+    {
+      "sourceRow": 20,
+      "plot": "",
+      "name": "craton",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "63a98dac-ae01-5296-b62d-219b96cfc860",
+      "mods": [
+        "craton"
+      ]
+    },
+    {
+      "sourceRow": 21,
+      "plot": "",
+      "name": "netherlink",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "a6670dd8-7711-5a78-85b3-cbbf4d63f67b",
+      "mods": [
+        "netherlink"
+      ]
+    },
+    {
+      "sourceRow": 23,
+      "plot": "C1",
+      "name": "吾有一术",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "c48bc5fa-e249-5803-b882-f36a7727804b",
+      "mods": [
+        "wenyan_addon",
+        "wenyan_programming"
+      ]
+    },
+    {
+      "sourceRow": 24,
+      "plot": "C2",
+      "name": "方块小镇",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "6d5bd124-cdbe-51cd-ab22-8163798bd070",
+      "mods": [
+        "yuushya",
+        "yuushya_modelling"
+      ]
+    },
+    {
+      "sourceRow": 25,
+      "plot": "C3",
+      "name": "混沌炼金",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "40679b45-20a1-52ca-a7e1-028eab7a8b0f",
+      "mods": [
+        "transmutatoria"
+      ]
+    },
+    {
+      "sourceRow": 26,
+      "plot": "C4",
+      "name": "magic_io",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "3f52abe9-bf3a-5655-9c63-7d7c5dd62465",
+      "mods": [
+        "magic_io"
+      ]
+    },
+    {
+      "sourceRow": 27,
+      "plot": "C5",
+      "name": "对话框/更多交互",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "venue": "1a71e0e4-cd00-51e1-9139-03006438de0f",
+      "mods": [
+        "chatbox"
+      ]
+    },
+    {
+      "sourceRow": 28,
+      "plot": "C6",
+      "name": "袖里舆图/山河同契/中键标点",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "fb66dbaa-bcb1-561a-938c-bc9c7fee6fde",
+      "mods": [
+        "aleeve_atlas",
+        "bonded_peaks",
+        "middle_key_ping"
+      ]
+    },
+    {
+      "sourceRow": 29,
+      "plot": "C7",
+      "name": "烹饪锅",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "40b4ad75-5d02-5541-b0f2-821bed026974",
+      "mods": [
+        "crockpot"
+      ]
+    },
+    {
+      "sourceRow": 30,
+      "plot": "",
+      "name": "泰拉巨石",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "8d9fc255-6c4f-5ae2-ae7d-0593c6ede629",
+      "mods": [
+        "terraria_boulders"
+      ]
+    },
+    {
+      "sourceRow": 31,
+      "plot": "",
+      "name": "小摊区",
+      "visitor": "PRESENT",
+      "expert": "ABSENT",
+      "unresolved": "Grouped or unverified venue identity; do not apply by name."
+    },
+    {
+      "sourceRow": 32,
+      "plot": "D0",
+      "name": "展示玩偶 / 主展馆",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "24271db3-f33b-516b-89e6-9f653c0c80ee",
+      "mods": [
+        "displaydoll"
+      ]
+    },
+    {
+      "sourceRow": 33,
+      "plot": "D2",
+      "name": "藿香/八角",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "c4e8875a-228e-569b-a33d-622fd411e1c6",
+      "mods": [
+        "ageratum",
+        "anisum"
+      ]
+    },
+    {
+      "sourceRow": 34,
+      "plot": "D3",
+      "name": "铁砧工艺附属",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "fd5b627b-2be2-58f7-b10c-93c269e9d44e",
+      "mods": [
+        "anvilcraft_pigsplus",
+        "anvilcraftextrapower",
+        "nekoplus",
+        "voidinair"
+      ],
+      "note": "不同图案共用普通章位，不重复计数"
+    },
+    {
+      "sourceRow": 35,
+      "plot": "D4",
+      "name": "MTR",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "2f0e0ca5-53b8-5b0b-a9f2-37685ffe26d7",
+      "mods": [
+        "mtr"
+      ]
+    },
+    {
+      "sourceRow": 36,
+      "plot": "D5",
+      "name": "八音盒/掘电报",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "5a32f0b6-580f-5e1f-ae94-933ddbd3bbdd",
+      "mods": [
+        "cc_mb",
+        "cc_ms"
+      ]
+    },
+    {
+      "sourceRow": 37,
+      "plot": "D6",
+      "name": "吉星工艺",
+      "visitor": "UNKNOWN",
+      "expert": "UNKNOWN",
+      "venue": "51fb1a8e-1ab4-5bb6-a617-32acf83159d9",
+      "mods": [
+        "astral_craft"
+      ]
+    },
+    {
+      "sourceRow": 38,
+      "plot": "D7",
+      "name": "铁砧工艺",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "784b34de-ac17-567f-a9f0-bcc1853a1a5b",
+      "mods": [
+        "anvilcraft"
+      ],
+      "note": "不同图案共用普通章位，不重复计数"
+    },
+    {
+      "sourceRow": 39,
+      "plot": "D8",
+      "name": "四叶草徒步公园",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "e16bba40-fdda-511b-92d7-65895f429c46",
+      "mods": [
+        "advanced_clover",
+        "autosprint"
+      ]
+    },
+    {
+      "sourceRow": 40,
+      "plot": "D9",
+      "name": "酒石酸综合展馆",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "unresolved": "Grouped or unverified venue identity; do not apply by name."
+    },
+    {
+      "sourceRow": 41,
+      "plot": "",
+      "name": "口口实验室",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "unresolved": "Grouped or unverified venue identity; do not apply by name."
+    },
+    {
+      "sourceRow": 42,
+      "plot": "E1",
+      "name": "联界门",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "0f9196eb-b8bd-5cb8-a7fd-955f9c907469",
+      "mods": [
+        "link_portals"
+      ]
+    },
+    {
+      "sourceRow": 43,
+      "plot": "E2",
+      "name": "炼药锅++/口水仗",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "504b8655-6c86-5007-9b1f-c4e684afedbd",
+      "mods": [
+        "cauldronpp",
+        "spitfight"
+      ]
+    },
+    {
+      "sourceRow": 44,
+      "plot": "E3",
+      "name": "vw50",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "1d0e3fa8-27dd-578a-8751-5e00ff9e9d84",
+      "mods": [
+        "vw50"
+      ]
+    },
+    {
+      "sourceRow": 45,
+      "plot": "E4",
+      "name": "家具计划",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "d020eb1e-8034-5fd7-9da4-bb3fa5a4ebad",
+      "mods": [
+        "furnitureplan",
+        "lights_up"
+      ]
+    },
+    {
+      "sourceRow": 46,
+      "plot": "E5",
+      "name": "万物皆可绳&网络音乐机",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "bf52f38c-3531-54fa-a83c-97eeafd51b54",
+      "mods": [
+        "net_music_can_play_bili",
+        "super_lead"
+      ]
+    },
+    {
+      "sourceRow": 47,
+      "plot": "E6",
+      "name": "深岩银河激光指示器",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "8a511589-eb82-5486-bfe3-a99137b65b02",
+      "mods": [
+        "drglaserpointer"
+      ]
+    },
+    {
+      "sourceRow": 48,
+      "plot": "E7",
+      "name": "minopp/随处随笔/boxdeco",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "unresolved": "Grouped or unverified venue identity; do not apply by name."
+    },
+    {
+      "sourceRow": 49,
+      "plot": "E8",
+      "name": "neoacoAE",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "0246f461-2891-56ff-847e-9d671f675a44",
+      "mods": [
+        "neoecoae"
+      ]
+    },
+    {
+      "sourceRow": 50,
+      "plot": "E9",
+      "name": "矿车革命",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "03785bcc-c6d2-5a1b-81d1-42efe7d01486",
+      "mods": [
+        "minecartrevolution"
+      ]
+    },
+    {
+      "sourceRow": 51,
+      "plot": "F1",
+      "name": "工业基石",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "0efc3845-c34a-532e-bbbc-4f199bb96d0a",
+      "mods": [
+        "industrybase"
+      ]
+    },
+    {
+      "sourceRow": 52,
+      "plot": "F2",
+      "name": "烘培坊/小酌一刻",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "37c624dd-85f2-5e07-973e-9e7a22f37cf6",
+      "mods": [
+        "bakeries",
+        "sip_moment"
+      ]
+    },
+    {
+      "sourceRow": 53,
+      "plot": "F3",
+      "name": "AAA Particles: World",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "a7e249d4-f20e-56c9-9a19-24a40426f6ac",
+      "mods": [
+        "aaa_particles_world"
+      ]
+    },
+    {
+      "sourceRow": 54,
+      "plot": "F4",
+      "name": "收获：遗产",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "6bed2480-6bc9-5440-9369-7505675fa8aa",
+      "mods": [
+        "harvestheritage"
+      ]
+    },
+    {
+      "sourceRow": 55,
+      "plot": "F5",
+      "name": "方生未逝",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "9bbaa28c-9f46-56d7-a51e-7c211f289b45",
+      "mods": [
+        "living_unvanished"
+      ]
+    },
+    {
+      "sourceRow": 56,
+      "plot": "F6",
+      "name": "伤害枢纽x方尖碑深渊",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "a27526f2-1f05-5fdc-a99e-04d06ca8ac2b",
+      "mods": [
+        "damagenexus",
+        "obeliskdepths"
+      ]
+    },
+    {
+      "sourceRow": 57,
+      "plot": "F7",
+      "name": "bsf3lite",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "6535703a-13d8-5858-a94d-77ba83cbc341",
+      "mods": [
+        "bsf3lite"
+      ]
+    },
+    {
+      "sourceRow": 58,
+      "plot": "G1",
+      "name": "玻璃瓶沙滩 / KilaGraph / WOMM",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "unresolved": "Grouped or unverified venue identity; do not apply by name."
+    },
+    {
+      "sourceRow": 59,
+      "plot": "G2",
+      "name": "连锁挖矿（TeaCon微型……）",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "697bebe7-1bfb-5017-a6b0-21cf795c8fb1",
+      "mods": [
+        "dh_s_veinminer"
+      ]
+    },
+    {
+      "sourceRow": 60,
+      "plot": "G3",
+      "name": "Shake n Stir",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "f553efdc-572d-54a8-88aa-95f7fdeded09",
+      "mods": [
+        "shakenstir"
+      ]
+    },
+    {
+      "sourceRow": 61,
+      "plot": "G4",
+      "name": "Arcanism / 魔导主义",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "af336844-b982-5fdd-ab00-b289ab7d6a9c",
+      "mods": [
+        "programmable_magic"
+      ]
+    },
+    {
+      "sourceRow": 62,
+      "plot": "G5",
+      "name": "织影落花",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "bb3bdfe7-0b86-56bc-9a87-8c238f038c13",
+      "mods": [
+        "shadowsandpetals"
+      ]
+    },
+    {
+      "sourceRow": 63,
+      "plot": "",
+      "name": "x3d地图",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "a5e9f62c-bfcb-5b3c-8989-75e599d2420c",
+      "mods": [
+        "x3d_map"
+      ]
+    },
+    {
+      "sourceRow": 64,
+      "plot": "H2",
+      "name": "无尽地牢",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "b08970d3-6b71-5bbf-bb65-f9550143347d",
+      "mods": [
+        "dungeon_infinity"
+      ]
+    },
+    {
+      "sourceRow": 65,
+      "plot": "H3",
+      "name": "兰法希：本德森之章",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "3cb2083d-424f-5032-9f3b-7cb7c9a5a361",
+      "mods": [
+        "lanfasie_benderson"
+      ]
+    },
+    {
+      "sourceRow": 66,
+      "plot": "H5",
+      "name": "傀儡工艺 / 傀儡地牢",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "158c2566-2185-5151-8831-d52e97f6b2e1",
+      "mods": [
+        "modulargolems"
+      ]
+    },
+    {
+      "sourceRow": 67,
+      "plot": "H7",
+      "name": "Grack",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "c31b12c2-2283-598f-aad0-ab69a0cfeceb",
+      "mods": [
+        "grack"
+      ]
+    },
+    {
+      "sourceRow": 68,
+      "plot": "H8",
+      "name": "无穷桌游",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "29e165cf-18e9-5e2c-9a62-ac5c13de15fe",
+      "mods": [
+        "infinite_board_games"
+      ]
+    },
+    {
+      "sourceRow": 69,
+      "plot": "H9",
+      "name": "急急急",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "ca59646b-caa1-5062-beb3-55720b8898d7",
+      "mods": [
+        "hurriedness"
+      ]
+    },
+    {
+      "sourceRow": 70,
+      "plot": "HX",
+      "name": "以太工艺",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "c58f2f45-393b-53e1-9951-dd0eaf248f7e",
+      "mods": [
+        "ether_craft",
+        "path_script"
+      ]
+    },
+    {
+      "sourceRow": 71,
+      "plot": "J1",
+      "name": "更好的钓竿",
+      "visitor": "PRESENT",
+      "expert": "UNKNOWN",
+      "venue": "5b8edf76-c8fc-5406-89ec-b5922669898e",
+      "mods": [
+        "better_rod"
+      ]
+    },
+    {
+      "sourceRow": 72,
+      "plot": "J2",
+      "name": "美食世界",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "096135c0-a0a3-58f4-88df-4b168d351278",
+      "mods": [
+        "delicacyworld"
+      ]
+    },
+    {
+      "sourceRow": 73,
+      "plot": "K1",
+      "name": "mekmm",
+      "visitor": "PRESENT",
+      "expert": "PRESENT",
+      "venue": "70e8b541-5109-5fcf-89b4-2efed236e4b6",
+      "mods": [
+        "mekmm"
+      ]
+    }
+  ]
+}

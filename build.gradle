@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     id 'net.neoforged.moddev' version '2.0.140'
 }
-version = '0.1.0-alpha.13'
+version = '0.1.0-alpha.18'
 group = 'dev.postmark'
 base { archivesName = 'postmark-26.1.2' }
 java {
@@ -52,6 +52,7 @@ if (project.hasProperty('compatSmoke')) {
     neoForge.runs.client {
         gameDirectory = file('run-compat-smoke')
         systemProperty 'postmark.compatSmoke', 'true'
+        if (project.hasProperty('guideSmoke')) systemProperty 'postmark.guideSmoke', 'true'
         programArgument '--width'
         programArgument '1440'
         programArgument '--height'

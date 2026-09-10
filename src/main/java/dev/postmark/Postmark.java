@@ -21,6 +21,7 @@ public final class Postmark {
     public Postmark(IEventBus bus) {
         bus.addListener(this::registerKeys);
         NeoForge.EVENT_BUS.addListener(this::tick);
+        NeoForge.EVENT_BUS.addListener(dev.postmark.client.GuideEntry::initScreen);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderFrameEvent.Post event) -> dev.postmark.render.ItemStampCapture.afterFrame());
     }
     private void registerKeys(RegisterKeyMappingsEvent event) {
@@ -29,6 +30,7 @@ public final class Postmark {
     }
     private void tick(ClientTickEvent.Post event) {
         SignMeUpBridge.tick();
+        dev.postmark.compat.GuideBridge.tick();
         var mc=Minecraft.getInstance();
         if(open!=null) while(open.consumeClick()) {
             if(mc.screen==null && mc.level!=null) PostcardScreen.show(null,null);

@@ -18,6 +18,8 @@ SMU 的 `ExhibitionStamp` 包含 `id`、`item`、`location`、`rotate`，不规�
 
 ## 地图自动盖印
 
+《漫游志》另行复用全部展馆元数据，以及 `textures/gui/units/<无连字符 UUID>/icon.png` 馆图。点击馆图发送 SMU 原 `TeleportToExhibitionPacket`，不自行改玩家坐标。SMU 自带的 `#visited` 不作为本地检索脚印依据；脚印只来自已加载盖章台的实际检索。发现未获得章不会调用授章或修改足迹包。具体交互与检索边界见 [操作说明](USAGE.md#漫游志)。
+
 1. 原盖章台照常请求服务端授章，客户端改为打开 Postmark。
 2. 等待交互之后的新服务端快照，确认拥有该章。
 3. 以交互时玩家 X/Z 为中心，通过 SMU 原消息更新地图印迹，旋转为 0。
@@ -30,3 +32,7 @@ SMU 的 `ExhibitionStamp` 包含 `id`、`item`、`location`、`rotate`，不规�
 ## 边界
 
 已通过真实集成服务器的盖章台、地图位置回传、visitor/expert、原生三维/平面物品和透明 PNG 验证。Postmark 不包含 SMU 源码或发行 JAR。用户的远程活动服、专用资源包、第三方特殊渲染器与其他上游版本仍需各自验证。
+
+## 外部预设
+
+`StampCatalog` 读取随包发布的 TeaCon 2026 玩家表事实快照，只按该届官方 UUID 关联，不模糊匹配名字。它仅合并导览视图，不写入 SMU、收藏或检索存档；资源中保留来源、日期和未绑定行。详见 [STAMP_CATALOG.md](STAMP_CATALOG.md)。
