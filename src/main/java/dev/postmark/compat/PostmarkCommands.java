@@ -19,7 +19,7 @@ public final class PostmarkCommands {
         event.getDispatcher().register(Commands.literal("postmark").then(Commands.literal("export").executes(context->{
             try {
                 var data=collect();var path=data.write(ClientSession.get().store().directory().resolve("exports"));
-                context.getSource().sendSuccess(()->Component.literal("已导出 "+data.venues().size()+" 个展馆、"+data.ownedCount()+" 枚服务器已领取章。"),false);
+                context.getSource().sendSuccess(()->Component.literal("已导出 "+data.venues().size()+" 个展馆、"+data.ownedCount()+" 枚已领取章（含本地保留图案）。"),false);
                 context.getSource().sendSuccess(()->Component.literal("[打开导出文件夹] "+path.getFileName()).withStyle(style->style.withColor(ChatFormatting.GREEN).withUnderlined(true).withClickEvent(new ClickEvent.OpenFile(path.getParent()))),false);
                 return 1;
             }catch(Exception e) {
@@ -38,11 +38,17 @@ public final class PostmarkCommands {
         for(Object exhibition:gallery.values()) {
             UUID id=(UUID)call(exhibition,"uuid");String name=call(call(exhibition,"metadata"),"name").toString();
             var stamps=new TreeMap<String,StampCatalogExport.Stamp>();
-            for(var found:journal.entry(id).stamps())stamps.put(found.id(),new StampCatalogExport.Stamp(found.id(),found.item(),"local_discovered"));
-            for(Object owned:(List<?>)call(call(exhibition,"footprint"),"stamps")) {
-                String key=(String)call(owned,"id");stamps.put(key,new StampCatalogExport.Stamp(key,call(owned,"item").toString(),"server_owned"));
+            var serverStamps=(List<?>)call(call(exhibition,"footprint"),"stamps");
+            var activeIds=new HashSet<String>();for(Object stamp:serverStamps)activeIds.add((String)call(stamp,"id"));
+            for(var found:journal.entry(id).stamps())stamps.put(StampIdentity.variant(found.id(),found.item()),new StampCatalogExport.Stamp(found.id(),found.item(),"local_discovered"));
+            for(var owned:session.album().stamps())if(!owned.practice() && owned.key().startsWith(id+"/") && StampIdentity.item(owned.key())!=null && activeIds.contains(StampIdentity.id(owned.key()))) {
+                String type=StampIdentity.id(owned.key()),item=StampIdentity.item(owned.key());
+                stamps.put(StampIdentity.variant(type,item),new StampCatalogExport.Stamp(type,item,"local_collected"));
             }
-            var observed=stamps.values().stream().map(s->new TravelJournal.KnownStamp(s.id(),s.item(),null,s.source().equals("server_owned"))).toList();
+            for(Object owned:serverStamps) {
+                String key=(String)call(owned,"id");stamps.put(StampIdentity.variant(key,call(owned,"item").toString()),new StampCatalogExport.Stamp(key,call(owned,"item").toString(),"server_owned"));
+            }
+            var observed=stamps.values().stream().map(s->new TravelJournal.KnownStamp(s.id(),s.item(),null,s.source().equals("server_owned") || s.source().equals("local_collected"))).toList();
             boolean area=venues.stream().filter(v->v.id().equals(id)).anyMatch(journal::areaSearched);
             result.add(new StampCatalogExport.Venue(id,name,journal.entry(id).searched(),area,StampCatalog.bundled().complete(id,observed,area),List.copyOf(stamps.values())));
         }

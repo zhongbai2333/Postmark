@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class TravelJournalTest {
     @TempDir Path directory;
     private final UUID a=UUID.randomUUID(),b=UUID.randomUUID();
-    private StampDefinition owned(UUID id,String type) {return new StampDefinition(id+"/"+type,type,"a".repeat(64)+".png",false);}
+    private StampDefinition owned(UUID id,String type) {return new StampDefinition(StampIdentity.key(id,type,type.equals("special")?"minecraft:diamond":"minecraft:paper"),type,"a".repeat(64)+".png",false);}
     @Test void discoveryIsNotASurveyOrAnOwnershipGrant() {
         var journal=TravelJournal.empty().surveyed(Set.of(),List.of(new TravelJournal.Discovery(a,"visitor","minecraft:paper")));
         assertFalse(journal.entry(a).searched());assertFalse(journal.stamps(a,List.of()).getFirst().owned());
@@ -23,9 +23,9 @@ class TravelJournalTest {
         assertFalse(TravelJournal.regularComplete(journal.stamps(a,List.of())));
         assertFalse(TravelJournal.regularComplete(journal.stamps(b,List.of(owned(b,"visitor")))));
     }
-    @Test void repeatedCountersDeduplicateByVenueAndIdButRefreshArtwork() {
-        var journal=TravelJournal.empty().surveyed(Set.of(a),List.of(new TravelJournal.Discovery(a,"visitor","minecraft:paper"),new TravelJournal.Discovery(a,"visitor","minecraft:grass_block"),new TravelJournal.Discovery(b,"visitor","minecraft:paper")));
-        assertEquals(1,journal.entry(a).stamps().size());assertEquals("minecraft:grass_block",journal.entry(a).stamps().getFirst().item());
+    @Test void repeatedCountersDeduplicateOnlyIdenticalArtwork() {
+        var journal=TravelJournal.empty().surveyed(Set.of(a),List.of(new TravelJournal.Discovery(a,"visitor","minecraft:paper"),new TravelJournal.Discovery(a,"visitor","minecraft:grass_block"),new TravelJournal.Discovery(a,"visitor","minecraft:paper"),new TravelJournal.Discovery(b,"visitor","minecraft:paper")));
+        assertEquals(2,journal.entry(a).stamps().size());assertEquals(Set.of("minecraft:paper","minecraft:grass_block"),journal.entry(a).stamps().stream().map(TravelJournal.FoundStamp::item).collect(java.util.stream.Collectors.toSet()));
         assertEquals(1,journal.entry(b).stamps().size());assertFalse(journal.entry(b).searched());
     }
     @Test void extraUncollectedStampRevokesRegularCompletionWithoutLosingCorners() {

@@ -15,11 +15,13 @@ public record TravelJournal(int version, List<Entry> entries) {
         public Entry {
             Objects.requireNonNull(venue); stamps=List.copyOf(stamps);
             if(area!=null && !searched)throw new IllegalArgumentException("Area survey requires inspection");
-            if(stamps.stream().map(FoundStamp::id).distinct().count()!=stamps.size()) throw new IllegalArgumentException("Duplicate stamp IDs");
+            if(stamps.stream().map(s->StampIdentity.variant(s.id,s.item)).distinct().count()!=stamps.size()) throw new IllegalArgumentException("Duplicate stamp variants");
         }
     }
     public record Discovery(UUID venue,String id,String item) {}
-    public record KnownStamp(String id,String item,String asset,boolean owned) {}
+    public record KnownStamp(String id,String item,String asset,boolean owned) {
+        public String identity() {return StampIdentity.variant(id,item);}
+    }
     public TravelJournal {
         if(version!=1) throw new IllegalArgumentException("Unsupported journal version: "+version);
         entries=List.copyOf(entries);
@@ -31,8 +33,8 @@ public record TravelJournal(int version, List<Entry> entries) {
         var result=new LinkedHashMap<UUID,Entry>();for(var e:entries)result.put(e.venue,e);
         for(var d:discoveries) {
             var old=result.getOrDefault(d.venue,new Entry(d.venue,false,List.of()));
-            var stamps=new LinkedHashMap<String,FoundStamp>();for(var s:old.stamps)stamps.put(s.id,s);
-            stamps.put(d.id,new FoundStamp(d.id,d.item));
+            var stamps=new LinkedHashMap<String,FoundStamp>();for(var s:old.stamps)stamps.put(StampIdentity.variant(s.id,s.item),s);
+            stamps.put(StampIdentity.variant(d.id,d.item),new FoundStamp(d.id,d.item));
             result.put(d.venue,new Entry(d.venue,old.searched,List.copyOf(stamps.values()),old.area));
         }
         for(var id:searched) {var old=result.getOrDefault(id,new Entry(id,false,List.of()));result.put(id,new Entry(id,true,old.stamps,old.area));}
@@ -47,12 +49,12 @@ public record TravelJournal(int version, List<Entry> entries) {
         return new TravelJournal(1,List.copyOf(result.values()));
     }
     public List<KnownStamp> stamps(UUID venue,List<StampDefinition> owned) {
-        var result=new TreeMap<String,KnownStamp>();
-        for(var s:entry(venue).stamps)result.put(s.id,new KnownStamp(s.id,s.item,null,false));
+        var result=new LinkedHashMap<String,KnownStamp>();
+        for(var s:entry(venue).stamps)result.put(StampIdentity.variant(s.id,s.item),new KnownStamp(s.id,s.item,null,false));
         String prefix=venue+"/";
         for(var s:owned) if(!s.practice() && s.key().startsWith(prefix)) {
-            String id=s.key().substring(prefix.length());var found=result.get(id);
-            result.put(id,new KnownStamp(id,found==null?null:found.item,s.asset(),true));
+            String id=StampIdentity.id(s.key()),item=StampIdentity.item(s.key());
+            result.put(StampIdentity.variant(id,item),new KnownStamp(id,item,s.asset(),true));
         }
         return List.copyOf(result.values());
     }

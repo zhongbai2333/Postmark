@@ -11,5 +11,6 @@ public final class StampCaptureCache {
     public boolean current(String key,Ticket ticket) {return tickets.get(key)==ticket;}
     public void retain(Set<String> owned) {tickets.keySet().retainAll(owned);}
     public void failed(String key,Ticket ticket) {if(current(key,ticket))tickets.remove(key);}
+    public void retainSlots(java.util.Set<String> slots) {tickets.keySet().removeIf(key->!slots.contains(StampIdentity.slot(key)));}
     public void clear() {tickets.clear();}
 }

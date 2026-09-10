@@ -23,7 +23,7 @@ class StampResetTest {
         assertSame(album,album.reconcileStamps(Set.of(),Set.of()));
     }
     @Test void sequentialRecollectionUnlocksOnlyServerOwnedStampsAndUpdatesGuide() {
-        var visitor=stamp(venue+"/visitor");var expert=stamp(venue+"/expert");
+        var visitor=stamp(StampIdentity.key(UUID.fromString(venue),"visitor","minecraft:paper"));var expert=stamp(StampIdentity.key(UUID.fromString(venue),"expert","minecraft:paper"));
         var album=Album.empty().unlock(visitor).unlock(expert);
         var id=UUID.fromString(venue);var journal=TravelJournal.empty().surveyed(Set.of(id),List.of(
                 new TravelJournal.Discovery(id,"visitor","minecraft:paper"),new TravelJournal.Discovery(id,"expert","minecraft:paper")));
@@ -33,7 +33,7 @@ class StampResetTest {
         album=album.unlock(visitor);assertEquals(List.of(visitor),album.stamps());
         assertFalse(TravelJournal.regularComplete(journal.stamps(id,album.stamps())));
         album=album.unlock(expert);assertTrue(TravelJournal.regularComplete(journal.stamps(id,album.stamps())));
-        assertEquals(List.of(expert),album.reconcileStamps(Set.of(venue),Set.of(expert.key())).stamps());
+        assertEquals(List.of(expert),album.reconcileStamps(Set.of(venue),Set.of(StampIdentity.slot(expert.key()))).stamps());
     }
     @Test void lateCaptureCannotUndoClearOrOverwriteReacquiredSameArtwork() {
         var cache=new StampCaptureCache();String key=venue+"/visitor";

@@ -6,6 +6,7 @@ import dev.postmark.client.ClientSession;
 import dev.postmark.client.PostcardScreen;
 import dev.postmark.model.MapPlacement;
 import dev.postmark.model.StampDefinition;
+import dev.postmark.model.StampIdentity;
 import dev.postmark.render.StampArtwork;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -29,7 +30,7 @@ public final class SignMeUpBridge {
                            MapPlacement.Rect rectangle, int deadline, String scope) {}
     private SignMeUpBridge() {}
     public static String notice() { return notice; }
-    public static String requestedKey() { return pending == null ? null : pending.exhibition+"/"+pending.id; }
+    public static String requestedKey() { return pending == null ? null : StampIdentity.key(pending.exhibition,pending.id,pending.item); }
     public static void capture(Object exhibition, Object stamp) {
         openPostcard = false;
         try {
@@ -81,7 +82,7 @@ public final class SignMeUpBridge {
                 }
                 var session=ClientSession.get();var next=session.album().reconcileStamps(venues,owned);
                 if(next!=session.album())session.update(next);
-                SNAPSHOTS.retain(owned);LABELS.keySet().retainAll(owned);
+                SNAPSHOTS.retainSlots(owned);LABELS.keySet().removeIf(key->!owned.contains(StampIdentity.slot(key)));
                 for(Object exhibition:lookup.values())for(Object stamp:stamps(exhibition))snapshot(exhibition,stamp);
                 lastGallery=lookup;
             }
@@ -92,7 +93,7 @@ public final class SignMeUpBridge {
                     Object exhibition = lookup.get(p.exhibition);
                     if (exhibition != null) {
                         for (Object stamp : stamps(exhibition)) {
-                            if (p.id.equals(call(stamp,"id"))) {
+                            if (p.id.equals(call(stamp,"id")) && p.item.equals(call(stamp,"item").toString())) {
                                 if (p.rectangle != null) sendMapStamp(p);
                                 snapshot(exhibition,stamp);
                                 notice = p.rectangle == null ? "印章已收集；地图位置不可用，保留原印迹" : "地图已按当前位置盖章 · 明信片可以自由盖印";
@@ -115,8 +116,8 @@ public final class SignMeUpBridge {
         }
     }
     private static void snapshot(Object exhibition, Object stamp) throws Exception {
-        String key = call(exhibition,"uuid") + "/" + call(stamp,"id");
         String item = call(stamp,"item").toString();
+        String key = StampIdentity.key((UUID)call(exhibition,"uuid"),call(stamp,"id").toString(),item);
         var session=ClientSession.get();
         String id=call(stamp,"id").toString();
         String title=call(call(exhibition,"metadata"),"name").toString().strip();
@@ -139,7 +140,7 @@ public final class SignMeUpBridge {
                         || session!=ClientSession.get() || !SNAPSHOTS.current(key,ticket)) return;
                 if(error!=null) throw new java.io.IOException("Cannot render stamp "+item,error);
                 String asset=session.store().putImage(image);
-                session.update(session.album().unlock(new StampDefinition(key,LABELS.getOrDefault(key,label),asset,false)));
+                session.update(session.album().unlockCaptured(new StampDefinition(key,LABELS.getOrDefault(key,label),asset,false)));
             } catch(Exception e) {
                 SNAPSHOTS.failed(key,ticket);
                 Postmark.LOGGER.warn("Cannot snapshot stamp {} ({})",key,item,e);

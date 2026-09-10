@@ -83,7 +83,7 @@ public final class CompatibilitySmoke {
                 if(Math.abs(location.x()-expected.x())>.00001 || Math.abs(location.y()-expected.y())>.00001
                         || Math.abs(location.w()-expected.width())>.00001 || Math.abs(location.h()-expected.height())>.00001)
                     throw new AssertionError("Map stamp was not synchronized at the player location: "+location+" expected "+expected);
-                if(ClientSession.get().album().stamps().stream().noneMatch(s->s.key().equals(EXHIBITION+"/visitor") && !s.practice()))
+                if(ClientSession.get().album().stamps().stream().noneMatch(s->s.key().equals(dev.postmark.model.StampIdentity.key(EXHIBITION,"visitor","minecraft:grass_block")) && !s.practice()))
                     throw new AssertionError("Confirmed stamp was not added to the postcard box");
                 var server=mc.getSingleplayerServer();
                 work=server.submit(()->{
@@ -104,13 +104,13 @@ public final class CompatibilitySmoke {
                 pngCapture=dev.postmark.render.StampArtwork.capture("exhibition_portal:textures/test_stamp.png");
                 next();
             } else if(stage==5 && paperCapture.isDone() && pngCapture.isDone() && work.isDone()
-                    && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(EXHIBITION+"/expert"))) {
+                    && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(dev.postmark.model.StampIdentity.key(EXHIBITION,"expert","minecraft:grass_block")))) {
                 var paper=paperCapture.join(); var png=pngCapture.join();
                 if(paper.getWidth()!=16*(int)mc.getWindow().getGuiScale() || (paper.getRGB(0,0)>>>24)!=0) throw new AssertionError("Item snapshot must retain transparent background");
                 if(png.getWidth()<16) throw new AssertionError("Raw texture stamp failed");
                 var session=ClientSession.get();
-                var definition=session.album().stamps().stream().filter(s->s.key().equals(EXHIBITION+"/visitor")).findFirst().orElseThrow();
-                var expert=session.album().stamps().stream().filter(s->s.key().equals(EXHIBITION+"/expert")).findFirst().orElseThrow();
+                var definition=session.album().stamps().stream().filter(s->s.key().equals(dev.postmark.model.StampIdentity.key(EXHIBITION,"visitor","minecraft:grass_block"))).findFirst().orElseThrow();
+                var expert=session.album().stamps().stream().filter(s->s.key().equals(dev.postmark.model.StampIdentity.key(EXHIBITION,"expert","minecraft:grass_block"))).findFirst().orElseThrow();
                 if(!definition.name().equals("联动花园 · 普通章") || !expert.name().equals("联动花园 · 大师章")) throw new AssertionError("Server exhibition name was not captured");
                 if(definition.expert() || !expert.expert()) throw new AssertionError("visitor/expert style distinction failed");
                 if(!definition.asset().equals(expert.asset())) throw new AssertionError("Handle style must not alter the artwork");

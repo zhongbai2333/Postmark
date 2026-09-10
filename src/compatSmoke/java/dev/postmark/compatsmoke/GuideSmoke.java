@@ -100,6 +100,11 @@ public final class GuideSmoke {
         }
         if(owned!=expectedOwned || !local)throw new AssertionError("Export does not distinguish current server collection and local discovery: "+owned);
     }
+    private static void verifyHeldItem(String item) throws Exception {
+        var field=PostcardScreen.class.getDeclaredField("tool");field.setAccessible(true);
+        var held=(StampDefinition)field.get(Minecraft.getInstance().screen);
+        if(held==null || !item.equals(StampIdentity.item(held.key())))throw new AssertionError("Picked the wrong same-ID artwork: "+held);
+    }
     private static void open() {TravelGuideScreen.show(null);guide=(TravelGuideScreen)Minecraft.getInstance().screen;}
     private static void counter(net.minecraft.server.level.ServerLevel level,BlockPos pos,String id,Identifier item) {
         counter(level,pos,id,item,TARGET);
@@ -111,7 +116,8 @@ public final class GuideSmoke {
         catch(Exception e){throw new RuntimeException(e);}
         entity.setChanged();level.sendBlockUpdated(pos,state,state,3);
     }
-    private static ExhibitionStamp granted(String id){return new ExhibitionStamp(id,Identifier.parse("minecraft:grass_block"),new org.teacon.exhibition_portal.client.framework.components.Rectangle(.4f,.4f,.05f,.05f),0);}
+    private static ExhibitionStamp granted(String id){return granted(id,"minecraft:grass_block");}
+    private static ExhibitionStamp granted(String id,String item){return new ExhibitionStamp(id,Identifier.parse(item),new org.teacon.exhibition_portal.client.framework.components.Rectangle(.4f,.4f,.05f,.05f),0);}
     @SubscribeEvent public static void tick(ClientTickEvent.Post event){
         if(!Boolean.getBoolean("postmark.guideSmoke"))return;
         var mc=Minecraft.getInstance();ticks++;
@@ -206,9 +212,9 @@ public final class GuideSmoke {
                 guide.onClose();
             }else if(stage==9 && ticks-at>15){
                 mc.setScreen(null);mc.gameMode.useItemOn(mc.player,InteractionHand.MAIN_HAND,new BlockHitResult(Vec3.atCenterOf(visitor),Direction.UP,visitor,false));next();
-            }else if(stage==10 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(TARGET+"/visitor"))){
+            }else if(stage==10 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(StampIdentity.key(TARGET,"visitor","minecraft:grass_block")))){
                 mc.setScreen(null);mc.gameMode.useItemOn(mc.player,InteractionHand.MAIN_HAND,new BlockHitResult(Vec3.atCenterOf(expert),Direction.UP,expert,false));next();
-            }else if(stage==11 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(TARGET+"/expert"))){
+            }else if(stage==11 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(StampIdentity.key(TARGET,"expert","minecraft:paper")))){
                 if(!TravelJournal.regularComplete(ClientSession.get().journal().stamps(TARGET,ClientSession.get().album().stamps())))throw new AssertionError("Regular completion missing");open();next();
             }else if(stage==12 && ticks-at==1){var p=guide.iconCenter(TARGET);guide.mouseScrolled(p[0],p[1],0,8);
             }else if(stage==12 && ticks-at==10){shot="06-regular-complete.png";
@@ -269,23 +275,47 @@ public final class GuideSmoke {
                 if(Math.abs(mc.player.getX()-remote.getX())<64 || !entry.searched() || entry.stamps().size()!=1)throw new AssertionError("Loaded-chunk survey range or footprint failed: "+entry);
                 if(mc.level.getChunkSource().getChunk(unloaded.getX()>>4,unloaded.getZ()>>4,net.minecraft.world.level.chunk.status.ChunkStatus.FULL,false)!=null)throw new AssertionError("Unloaded test chunk was requested");
                 if(!ClientSession.get().journal().stamps(REMOTE,ClientSession.get().album().stamps()).stream().noneMatch(TravelJournal.KnownStamp::owned))throw new AssertionError("Remote discovery granted ownership");
-                work=mc.getSingleplayerServer().submit(()->counter(mc.getSingleplayerServer().overworld(),remote,"visitor",Identifier.parse("minecraft:diamond"),REMOTE));
+                work=mc.getSingleplayerServer().submit(()->counter(mc.getSingleplayerServer().overworld(),remote.offset(1,0,0),"visitor",Identifier.parse("minecraft:diamond"),REMOTE));
                 // Moving more than the old eight-block limit must not discard observations.
                 mc.player.setPos(mc.player.getX()+12,mc.player.getY(),mc.player.getZ());next();
             }else if(stage==24 && work.isDone() && ClientSession.get().journal().entry(REMOTE).stamps().stream().anyMatch(s->s.item().equals("minecraft:diamond"))){
-                work.join();if(ClientSession.get().journal().entry(REMOTE).stamps().size()!=1)throw new AssertionError("Repeat scan duplicated a stamp or inspected an unloaded chunk");
+                work.join();if(ClientSession.get().journal().entry(REMOTE).stamps().size()!=2)throw new AssertionError("Same-ID artwork variants lost or unloaded chunk inspected");
                 next();
             }else if(stage==25 && ClientSession.get().journal().areaSearched(venue(REMOTE))){
                 var session=ClientSession.get();var observed=session.journal().stamps(REMOTE,session.album().stamps());
                 if(StampCatalog.bundled().needsInspection(REMOTE,true,observed,true) || StampCatalog.bundled().complete(REMOTE,observed,true))throw new AssertionError("Single unowned area result");
                 if(!new TravelJournalStore(session.store().directory()).load().areaSearched(venue(REMOTE)))throw new AssertionError("Area result not persisted");
-                work=mc.getSingleplayerServer().submit(()->EPServer.updateFootprint(mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst(),REMOTE,f->f.withStamp(granted("visitor"))));next();
-            }else if(stage==26 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(REMOTE+"/visitor"))){
+                work=mc.getSingleplayerServer().submit(()->EPServer.updateFootprint(mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst(),REMOTE,f->f.withStamp(granted("visitor","minecraft:paper"))));next();
+            }else if(stage==26 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(StampIdentity.key(REMOTE,"visitor","minecraft:paper")))){
                 work.join();var session=ClientSession.get();var observed=session.journal().stamps(REMOTE,session.album().stamps());
-                if(!StampCatalog.bundled().complete(REMOTE,observed,session.journal().areaSearched(venue(REMOTE))))throw new AssertionError("Collected single-stamp venue should complete");
-                open();var p=guide.captionCenter(REMOTE);click(p[0],p[1]);shot="15-single-area-result.png";
-                work=mc.getSingleplayerServer().submit(()->counter(mc.getSingleplayerServer().overworld(),remote.offset(2,0,0),"expert",Identifier.parse("minecraft:emerald"),REMOTE));next();
-            }else if(stage==27 && ClientSession.get().journal().entry(REMOTE).stamps().size()==2){
+                if(StampCatalog.bundled().complete(REMOTE,observed,true) || observed.size()!=2 || observed.stream().filter(TravelJournal.KnownStamp::owned).count()!=1)throw new AssertionError("One visitor must not unlock both artwork variants");
+                work=mc.getSingleplayerServer().submit(()->EPServer.updateFootprint(mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst(),REMOTE,f->f.withStamp(granted("visitor","minecraft:diamond"))));stage=60;at=ticks;
+            }else if(stage==60 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(StampIdentity.key(REMOTE,"visitor","minecraft:diamond")))){
+                work.join();var session=ClientSession.get();var observed=session.journal().stamps(REMOTE,session.album().stamps());
+                if(observed.size()!=2 || !StampCatalog.bundled().complete(REMOTE,observed,true))throw new AssertionError("Second visitor overwrote first or failed completion");
+                if(!session.store().load().stamps().equals(session.album().stamps()))throw new AssertionError("Variants not persisted");
+                var export=dev.postmark.compat.PostmarkCommands.collect().venues().stream().filter(v->v.uuid().equals(REMOTE)).findFirst().orElseThrow();
+                if(export.stamps().size()!=2 || !export.allKnownCollected() || export.stamps().stream().noneMatch(t->t.source().equals("local_collected")) || export.stamps().stream().noneMatch(t->t.source().equals("server_owned")))throw new AssertionError("Variant export lost historical/current distinction");
+                ClientSession.clear();if(ClientSession.get().album().stamps().stream().filter(t->t.key().startsWith(REMOTE+"/")).count()!=2)throw new AssertionError("Reopen lost variants");
+                open();stage=61;at=ticks;
+            }else if(stage==61 && ticks-at>25){
+                if(guide.displayedStamps(REMOTE).size()!=2)throw new AssertionError("Guide must show both visitors");
+                var p=guide.cornerCenter(REMOTE,false);click(p[0],p[1]);
+                if(!(mc.screen instanceof PostcardScreen))throw new AssertionError("First visitor corner cannot pick up stamp");
+                verifyHeldItem("minecraft:paper");
+                open();stage=62;at=ticks;
+            }else if(stage==62 && ticks-at>15){
+                var p=guide.cornerCenter(REMOTE,true);click(p[0],p[1]);
+                if(!(mc.screen instanceof PostcardScreen))throw new AssertionError("Second visitor corner cannot pick up stamp");
+                verifyHeldItem("minecraft:diamond");
+                open();stage=63;at=ticks;
+            }else if(stage==63 && ticks-at>15){
+                var caption=guide.captionCenter(REMOTE);click(caption[0],caption[1]);
+                if(!REMOTE.equals(guide.detailVenue()))throw new AssertionError("Two-visitor detail failed to open");stage=64;at=ticks;
+            }else if(stage==64 && ticks-at>15){
+                shot="17-two-visitor-variants.png";
+                work=mc.getSingleplayerServer().submit(()->counter(mc.getSingleplayerServer().overworld(),remote.offset(2,0,0),"expert",Identifier.parse("minecraft:emerald"),REMOTE));stage=27;at=ticks;
+            }else if(stage==27 && ClientSession.get().journal().entry(REMOTE).stamps().size()==3){
                 work.join();var session=ClientSession.get();
                 if(StampCatalog.bundled().complete(REMOTE,session.journal().stamps(REMOTE,session.album().stamps()),session.journal().areaSearched(venue(REMOTE))))throw new AssertionError("New unowned stamp must revoke single completion");
                 next();
@@ -301,8 +331,8 @@ public final class GuideSmoke {
                 work.join();var session=ClientSession.get();var observed=session.journal().stamps(PRESET,session.album().stamps());
                 if(observed.size()!=1 || !observed.getFirst().id().equals("expert"))throw new AssertionError("Master-only discovery fixture");
                 if(StampCatalog.bundled().merge(PRESET,observed,true).size()!=2 || !StampCatalog.bundled().needsInspection(PRESET,true,observed,true) || StampCatalog.bundled().complete(PRESET,observed,true))throw new AssertionError("Confirmed ordinary ghost must remain until discovered/owned");
-                work=mc.getSingleplayerServer().submit(()->EPServer.updateFootprint(mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst(),PRESET,f->f.withStamp(granted("expert"))));next();
-            }else if(stage==30 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(PRESET+"/expert"))){
+                work=mc.getSingleplayerServer().submit(()->EPServer.updateFootprint(mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst(),PRESET,f->f.withStamp(granted("expert","minecraft:emerald"))));next();
+            }else if(stage==30 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(StampIdentity.key(PRESET,"expert","minecraft:emerald")))){
                 work.join();var session=ClientSession.get();var observed=session.journal().stamps(PRESET,session.album().stamps());
                 if(StampCatalog.bundled().complete(PRESET,observed,true))throw new AssertionError("Confirmed paired venue still lacks ordinary stamp");
                 open();var p=guide.captionCenter(PRESET);click(p[0],p[1]);next();
@@ -315,7 +345,7 @@ public final class GuideSmoke {
                 if(StampCatalog.bundled().merge(PRESET,observed,true).size()!=2 || StampCatalog.bundled().complete(PRESET,observed,true))throw new AssertionError("Later ordinary discovery must restore slot and revoke master-only completion");
                 next();
             }else if(stage==33){
-                var session=ClientSession.get();var stamp=session.album().stamps().stream().filter(s->s.key().equals(PRESET+"/expert")).findFirst().orElseThrow();
+                var session=ClientSession.get();var stamp=session.album().stamps().stream().filter(s->s.key().equals(StampIdentity.key(PRESET,"expert","minecraft:emerald"))).findFirst().orElseThrow();
                 session.update(session.album().replace(session.album().selected().stamp(stamp.key(),stamp.asset(),.6,.6,.2,0)));
                 resetCards=session.album().cards();resetDiscoveries=session.journal().entry(PRESET).stamps();
                 PostcardScreen.show(null,stamp.key());((PostcardScreen)mc.screen).pickUpCollected(stamp.key());
@@ -339,14 +369,14 @@ public final class GuideSmoke {
                 if(((PostcardScreen)mc.screen).stampPreviewAmount()!=0)throw new AssertionError("Revoked held tool remains active");
                 if(!ClientSession.get().album().cards().equals(resetCards))throw new AssertionError("Revoked tool added imprint");
                 mc.setScreen(null);
-                work=mc.getSingleplayerServer().submit(()->EPServer.updateFootprint(mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst(),PRESET,f->f.withStamp(granted("expert"))));next();
-            }else if(stage==36 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(PRESET+"/expert"))){
+                work=mc.getSingleplayerServer().submit(()->EPServer.updateFootprint(mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst(),PRESET,f->f.withStamp(granted("expert","minecraft:emerald"))));next();
+            }else if(stage==36 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(StampIdentity.key(PRESET,"expert","minecraft:emerald")))){
                 work.join();var session=ClientSession.get();
                 if(session.album().stamps().stream().filter(s->!s.practice()).count()!=1)throw new AssertionError("Recollecting master restored other old stamps");
                 if(StampCatalog.bundled().complete(PRESET,session.journal().stamps(PRESET,session.album().stamps()),true))throw new AssertionError("Only master reacquired, visitor still missing");
                 verifyExport(1);
-                work=mc.getSingleplayerServer().submit(()->EPServer.updateFootprint(mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst(),PRESET,f->f.withStamp(granted("visitor"))));next();
-            }else if(stage==37 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(PRESET+"/visitor"))){
+                work=mc.getSingleplayerServer().submit(()->EPServer.updateFootprint(mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst(),PRESET,f->f.withStamp(granted("visitor","minecraft:paper"))));next();
+            }else if(stage==37 && ClientSession.get().album().stamps().stream().anyMatch(s->s.key().equals(StampIdentity.key(PRESET,"visitor","minecraft:paper")))){
                 work.join();var session=ClientSession.get();
                 if(session.album().stamps().stream().filter(s->!s.practice()).count()!=2 || !StampCatalog.bundled().complete(PRESET,session.journal().stamps(PRESET,session.album().stamps()),false))throw new AssertionError("Sequential reacquisition failed");
                 if(!session.album().cards().equals(resetCards))throw new AssertionError("Reacquisition changed postcards");
@@ -355,7 +385,7 @@ public final class GuideSmoke {
                 ClientSession.clear();if(!ClientSession.get().album().equals(reopened))throw new AssertionError("Reopened session collection mismatch");
                 next();
             }else if(stage==38){
-                Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"PASS: both preset and unknown unsearched galleries expose only two empty question silhouettes; client postmark export command creates separate JSON files at zero/one/two owned stamps and distinguishes local discoveries without claiming complete catalog; actual SMU clear_footprint command revokes local collection and held tool, preserves postcards/assets/discoveries, master and visitor reacquire one by one, completion and persisted reopen follow ownership; confirmed paired preset retains missing ordinary silhouette after area scan and master acquisition, later ordinary discovery reveals its face, actual pair ownership completes without area evidence; survival and creative inventory entry drag captures press/drag/release without moving carried items; screen bounds and persisted position on reopen; guide camera restored from disk; unsearched preset and ordinary venues show question; observed slots remove question; completed waypoint area resolves single or empty venue questions; single collection completes and new expert revokes completion; area evidence persists; question, completion tag and cat footprint open details; loaded client chunk discovery 96 blocks away; unloaded server counter ignored; repeat scan updates artwork after movement; real SMU 1.1.12 gallery icons and metadata; bundled preset ghosts without discovery or ownership; all 15 venues on one canvas and every caption; cursor-anchored smooth zoom; native mouse event hover enlargement; canvas drag without teleport; inventory stamp desk and return; canvas GUI 2 and 3; rotated caption and corner targets; desk and inventory mouse entries; isolated stamp hit targets; drag cancellation; real UUID teleport; SMU #visited and arrival alone never mark searched; completed loaded-chunk survey records two unowned stamps and de-duplicates counters; separate journal persists; actual counter interactions collect visitor/expert; regular completion; newly discovered third stamp revokes completion; owned stamp pickup and postcard imprint; empty survey has no invented slots. Synthetic exhibition fixtures, not a production server.");
+                Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"PASS: two visitor counters with different artwork remain separate through scanning, sequential SMU same-slot replacement, both guide corner pickups, export, session reload, and clear_footprint; one variant alone cannot complete; both preset and unknown unsearched galleries expose only two empty question silhouettes; client postmark export command creates separate JSON files at zero/one/two owned stamps and distinguishes local discoveries without claiming complete catalog; actual SMU clear_footprint command revokes local collection and held tool, preserves postcards/assets/discoveries, master and visitor reacquire one by one, completion and persisted reopen follow ownership; confirmed paired preset retains missing ordinary silhouette after area scan and master acquisition, later ordinary discovery reveals its face, actual pair ownership completes without area evidence; survival and creative inventory entry drag captures press/drag/release without moving carried items; screen bounds and persisted position on reopen; guide camera restored from disk; unsearched preset and ordinary venues show question; observed slots remove question; completed waypoint area resolves single or empty venue questions; two visitor variants complete only together and new expert revokes completion; area evidence persists; question, completion tag and cat footprint open details; loaded client chunk discovery 96 blocks away; unloaded server counter ignored; repeat scan retains distinct artwork after movement; real SMU 1.1.12 gallery icons and metadata; bundled preset ghosts without discovery or ownership; all 15 venues on one canvas and every caption; cursor-anchored smooth zoom; native mouse event hover enlargement; canvas drag without teleport; inventory stamp desk and return; canvas GUI 2 and 3; rotated caption and corner targets; desk and inventory mouse entries; isolated stamp hit targets; drag cancellation; real UUID teleport; SMU #visited and arrival alone never mark searched; completed loaded-chunk survey records two unowned stamps and de-duplicates counters; separate journal persists; actual counter interactions collect visitor/expert; regular completion; newly discovered third stamp revokes completion; owned stamp pickup and postcard imprint; empty survey has no invented slots. Synthetic exhibition fixtures, not a production server.");
                 mc.stop();stage=99;
             }
         }catch(Throwable e){Postmark.LOGGER.error("GUIDE SMOKE FAILED stage="+stage,e);try{Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"FAIL stage="+stage+": "+e);}catch(Exception ignored){}mc.stop();stage=99;}

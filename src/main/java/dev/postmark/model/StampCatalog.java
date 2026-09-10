@@ -14,7 +14,7 @@ public final class StampCatalog {
             var result=new LinkedHashMap<String,TravelJournal.KnownStamp>();
             if(visitor==Presence.PRESENT)result.put("visitor",new TravelJournal.KnownStamp("visitor",null,null,false));
             if(expert==Presence.PRESENT)result.put("expert",new TravelJournal.KnownStamp("expert",null,null,false));
-            for(var stamp:observed)result.put(stamp.id(),stamp);
+            for(var stamp:observed)putObserved(result,stamp);
             return List.copyOf(result.values());
         }
         public boolean complete(List<TravelJournal.KnownStamp> observed) {
@@ -24,6 +24,12 @@ public final class StampCatalog {
             boolean expertResolved=expert!=Presence.UNKNOWN || observed.stream().anyMatch(s->s.id().equals("expert"));
             return visitorResolved && expertResolved && !merged.isEmpty() && merged.stream().allMatch(TravelJournal.KnownStamp::owned);
         }
+    }
+    private static void putObserved(Map<String,TravelJournal.KnownStamp> result,TravelJournal.KnownStamp stamp) {
+        // Replace a category placeholder, never another actual artwork in that category.
+        var placeholder=result.get(stamp.id());
+        if(placeholder!=null && placeholder.item()==null && placeholder.asset()==null)result.remove(stamp.id());
+        result.put(stamp.identity(),stamp);
     }
     private final Map<UUID,Entry> entries;
     private final String date;
@@ -47,7 +53,7 @@ public final class StampCatalog {
             Presence expected=entry==null?Presence.UNKNOWN:id.equals("visitor")?entry.visitor():entry.expert();
             if(expected==Presence.UNKNOWN)result.put(id,new TravelJournal.KnownStamp(id,null,null,false));
         }
-        for(var stamp:merge(venue,observed,areaSearched))result.put(stamp.id(),stamp);
+        for(var stamp:merge(venue,observed,areaSearched))putObserved(result,stamp);
         return List.copyOf(result.values());
     }
     public boolean complete(UUID venue,List<TravelJournal.KnownStamp> observed) {

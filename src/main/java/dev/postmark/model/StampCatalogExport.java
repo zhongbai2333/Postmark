@@ -19,7 +19,7 @@ public record StampCatalogExport(int formatVersion,String generatedAt,String mod
         // A collection export cannot establish that an unobserved stamp does not exist.
         return new StampCatalogExport(1,Instant.now().toString(),modVersion,false,venues);
     }
-    public long ownedCount() {return venues.stream().flatMap(v->v.stamps.stream()).filter(s->s.source.equals("server_owned")).count();}
+    public long ownedCount() {return venues.stream().flatMap(v->v.stamps.stream()).filter(s->s.source.equals("server_owned") || s.source.equals("local_collected")).count();}
     public Path write(Path directory) throws IOException {
         Path path=directory.resolve("stamp-catalog-"+Instant.now().toEpochMilli()+"-"+UUID.randomUUID().toString().substring(0,8)+".json");
         byte[] data=new GsonBuilder().setPrettyPrinting().create().toJson(this).getBytes(StandardCharsets.UTF_8);

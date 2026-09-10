@@ -10,7 +10,7 @@ public record CollectionProgress(int total,int visitors,int experts,int others,i
         int visitors=0,experts=0,others=0;Set<String> venues=new HashSet<>();
         for(var stamp:unique.values()) {
             int slash=stamp.key().lastIndexOf('/');
-            String id=slash<0?stamp.key():stamp.key().substring(slash+1);
+            String id=StampIdentity.id(stamp.key());
             if(slash>0) venues.add(stamp.key().substring(0,slash));
             switch(id) { case "visitor" -> visitors++;case "expert" -> experts++;default -> others++; }
         }

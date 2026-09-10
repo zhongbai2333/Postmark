@@ -94,10 +94,11 @@ public final class TravelGuideScreen extends Screen {
                 var id=venue.id();var observed=journal.stamps(id,owned);
                 boolean searched=journal.entry(id).searched(),area=journal.areaSearched(venue);
                 var known=catalog.display(id,observed,area);
-                var visitor=known.stream().filter(stamp->stamp.id().equals("visitor")).findFirst().orElse(null);
-                var expert=known.stream().filter(stamp->stamp.id().equals("expert")).findFirst().orElse(null);
+                var ordinary=known.stream().filter(stamp->stamp.id().equals("visitor")).findFirst().orElseGet(()->known.stream().filter(stamp->!stamp.id().equals("expert")).findFirst().orElse(null));
+                var visitor=ordinary==null && known.size()>1?known.getFirst():ordinary;
+                var expert=known.stream().filter(stamp->stamp!=visitor && stamp.id().equals("expert")).findFirst().orElseGet(()->known.stream().filter(stamp->stamp!=visitor).findFirst().orElse(null));
                 states.put(id,new VenueState(known,searched,area,catalog.complete(id,observed,area),catalog.needsInspection(id,searched,observed,area),visitor,expert,
-                        known.stream().filter(stamp->!stamp.id().equals("visitor")&&!stamp.id().equals("expert")).count()));
+                        known.stream().filter(stamp->stamp!=visitor&&stamp!=expert).count()));
             }
             stateJournal=journal;stateOwned=owned;stateVenues=venues;
         }
@@ -185,7 +186,7 @@ public final class TravelGuideScreen extends Screen {
     public List<TravelJournal.KnownStamp> displayedStamps(UUID id) {return stamps(id);}
     private TravelJournal.KnownStamp stamp(UUID id,String kind) {
         var state=states.get(id);if(state==null)return null;
-        return kind.equals("visitor")?state.visitor:kind.equals("expert")?state.expert:state.stamps.stream().filter(s->s.id().equals(kind)).findFirst().orElse(null);
+        return kind.equals("visitor")?state.visitor:kind.equals("expert")?state.expert:state.stamps.stream().filter(s->s.identity().equals(kind)).findFirst().orElse(null);
     }
     private void picture(GuiGraphicsExtractor g,GuideVenue venue,int x,int y,int size) {
         var icon=icons.computeIfAbsent(venue.icon(),source->{var id=Identifier.tryParse(source);return id!=null&&minecraft.getResourceManager().getResource(id).isPresent()?Optional.of(id):Optional.empty();});
@@ -302,7 +303,7 @@ public final class TravelGuideScreen extends Screen {
             if(DeskControls.hit(x,y,dx+18,dy+h-18))return new Hit("detailPrev",detail,null);
             if(DeskControls.hit(x,y,dx+w-18,dy+h-18))return new Hit("detailNext",detail,null);
             var known=stamps(detail);
-            for(int i=0;i<detailCapacity() && detailPage*detailCapacity()+i<known.size();i++){int cx=dx+20+(w-40)*(i%4)/4+(w-40)/8,cy=dy+84+(i/4)*52;if(Math.abs(x-cx)<=17&&y>=cy-25&&y<=cy+18)return new Hit("stamp",detail,known.get(detailPage*detailCapacity()+i).id());}
+            for(int i=0;i<detailCapacity() && detailPage*detailCapacity()+i<known.size();i++){int cx=dx+20+(w-40)*(i%4)/4+(w-40)/8,cy=dy+84+(i/4)*52;if(Math.abs(x-cx)<=17&&y>=cy-25&&y<=cy+18)return new Hit("stamp",detail,known.get(detailPage*detailCapacity()+i).identity());}
             return null;
         }
         if(DeskControls.hit(x,y,width-28,28))return new Hit("close",null,null);
@@ -367,7 +368,7 @@ public final class TravelGuideScreen extends Screen {
             case "travel" -> {if(GuideBridge.teleport(target.venue))minecraft.setScreen(null);else error=GuideBridge.status();}
             case "stamp" -> {
                 var s=stamp(target.venue,target.stamp);
-                if(s!=null && s.owned()) {PostcardScreen.show(parent,target.venue+"/"+target.stamp);if(minecraft.screen instanceof PostcardScreen desk)desk.pickUpCollected(target.venue+"/"+target.stamp);}
+                if(s!=null && s.owned()) {String key=target.venue+"/"+s.identity();PostcardScreen.show(parent,key);if(minecraft.screen instanceof PostcardScreen desk)desk.pickUpCollected(key);}
                 else {detail=target.venue;detailPage=0;}
             }
         }
