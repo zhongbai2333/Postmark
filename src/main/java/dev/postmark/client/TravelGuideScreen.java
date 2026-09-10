@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
 public final class TravelGuideScreen extends Screen {
     private final Screen parent;
     private final ClientSession session;
-    private final Map<String,Identifier> art=new LinkedHashMap<>();
+    private final Map<String,Identifier> art=new LinkedHashMap<>(128,.75f,true);
     private final Set<String> pending=new HashSet<>(),failed=new HashSet<>();
     private TravelJournal journal=TravelJournal.empty();
     private List<GuideVenue> venues=List.of();
@@ -30,13 +30,23 @@ public final class TravelGuideScreen extends Screen {
     private List<Tile> canvasTiles=List.of();
     private final Map<UUID,Float> enlargement=new HashMap<>();
     private UUID hovering;
-    private boolean cameraReady,dragging,panArmed;
+    private boolean cameraReady,restoredCamera,dragging,panArmed;
     private double pressX,pressY,lastDragX,lastDragY;
     private long lastFrame;
     private UUID detail;
     private Hit pressed;
     private String error="";
     private boolean live;
+    private int previewBudget,previewGeneration;
+    private Identifier markers,patterns;
+    private final Map<String,Optional<Identifier>> icons=new HashMap<>();
+    private final Map<UUID,VenueState> states=new HashMap<>();
+    private List<StampDefinition> stateOwned=List.of();
+    private TravelJournal stateJournal;
+    private List<GuideVenue> stateVenues;
+    private List<GuideVenue> arrangedVenues;
+    private record VenueState(List<TravelJournal.KnownStamp> stamps,boolean searched,boolean area,boolean complete,boolean inspection,
+                              TravelJournal.KnownStamp visitor,TravelJournal.KnownStamp expert,long extra) {}
     private long opened;
     private static final int INK=0xFF443B2D,PAPER=0xFFE4D3A5;
     private record Hit(String action,UUID venue,String stamp) {}
@@ -56,24 +66,40 @@ public final class TravelGuideScreen extends Screen {
         catch(Exception e) {Postmark.LOGGER.warn("Cannot open travel guide",e);}
     }
     private static long now() {return System.nanoTime()/1_000_000;}
-    @Override protected void init() {boolean first=!cameraReady;live=true;opened=now();lastFrame=opened;sync();layout();if(first)view.enter();}
+    @Override protected void init() {boolean first=!cameraReady;live=true;opened=now();lastFrame=opened;sync();layout();if(markers==null)markers=registerTexture("markers",dev.postmark.render.GuideMarkerPainter.paint());if(patterns==null)patterns=registerTexture("paper",dev.postmark.render.GuideMarkerPainter.paperPatterns());icons.clear();if(first&&!restoredCamera)view.enter();}
     private void layout() {
         bx=16;by=55;bw=Math.max(180,width-72);bh=Math.max(100,height-83);
-        var ids=venues.stream().map(GuideVenue::id).toList();boolean changed=!ids.equals(layoutIds);
-        if(changed){layoutIds=ids;canvas=GuideCanvasLayout.scatter(ids);}
-        if(changed || canvasTiles.size()!=venues.size()) {
+        if(arrangedVenues!=venues) {
+            var ids=venues.stream().map(GuideVenue::id).toList();
+            if(!ids.equals(layoutIds)){layoutIds=ids;canvas=GuideCanvasLayout.scatter(ids);}
             var tiles=new ArrayList<Tile>();for(var n:canvas.nodes())tiles.add(new Tile(venues.get(n.index()),n.x(),n.y(),n.size(),n.variant(),n.angle()));canvasTiles=List.copyOf(tiles);
-        }else if(!canvasTiles.isEmpty()) {
-            // Metadata can change while the camera and paper positions remain stable.
-            var first=canvasTiles.getFirst();if(first.venue!=venues.getFirst()) {
-                var tiles=new ArrayList<Tile>();for(var n:canvas.nodes())tiles.add(new Tile(venues.get(n.index()),n.x(),n.y(),n.size(),n.variant(),n.angle()));canvasTiles=List.copyOf(tiles);
-            }
+            arrangedVenues=venues;
         }
-        view.resize(bw,bh,canvas.width(),canvas.height(),!cameraReady);if(!cameraReady&&!venues.isEmpty())view.readable();cameraReady=true;
+        view.resize(bw,bh,canvas.width(),canvas.height(),!cameraReady);
+        if(!cameraReady&&!venues.isEmpty()) {
+            view.readable();
+            try {var saved=session.guideView();if(saved!=null){view.restore(saved);restoredCamera=true;}}
+            catch(Exception e){Postmark.LOGGER.warn("Cannot restore travel guide view",e);}
+            cameraReady=true;
+        }
     }
+
     private void sync() {
         venues=GuideBridge.venues();
         try {journal=session.journal();}catch(Exception e){error="检索记录读取失败，原文件已保留";}
+        var owned=session.album().stamps();
+        if(stateJournal!=journal || stateOwned!=owned || stateVenues!=venues) {
+            states.clear();var catalog=StampCatalog.bundled();
+            for(var venue:venues) {
+                var id=venue.id();var observed=journal.stamps(id,owned);var known=catalog.merge(id,observed);
+                boolean searched=journal.entry(id).searched(),area=journal.areaSearched(venue);
+                var visitor=known.stream().filter(stamp->stamp.id().equals("visitor")).findFirst().orElse(null);
+                var expert=known.stream().filter(stamp->stamp.id().equals("expert")).findFirst().orElse(null);
+                states.put(id,new VenueState(known,searched,area,catalog.complete(id,observed,area),catalog.needsInspection(id,searched,observed,area),visitor,expert,
+                        known.stream().filter(stamp->!stamp.id().equals("visitor")&&!stamp.id().equals("expert")).count()));
+            }
+            stateJournal=journal;stateOwned=owned;stateVenues=venues;
+        }
     }
     public UUID detailVenue() {return detail;}
     public int canvasVenueCount(){return canvasTiles.size();}
@@ -90,6 +116,7 @@ public final class TravelGuideScreen extends Screen {
     public double[] iconCenter(UUID id){var t=tile(id);return toScreen(t,t.x+t.size/2.0,t.y+t.size/2.0);}
     public double[] cornerCenter(UUID id,boolean expert){var t=tile(id);return toScreen(t,expert?t.x+t.size:t.x,t.y);}
     public double[] captionCenter(UUID id){var t=tile(id);return toScreen(t,t.x+t.size/2.0,t.y+t.size+13);}
+    public double[] captionEdge(UUID id){var t=tile(id);return toScreen(t,t.x+t.size+6,t.y+t.size+15);}
     public double[] inspectionCenter(UUID id){var t=tile(id);return toScreen(t,t.x+t.size/2.0,t.y-16);}
     public double[] footprintCenter(UUID id){var t=tile(id);return toScreen(t,t.x+t.size-12,t.y+t.size-16);}
     private List<Tile> tiles(){return canvasTiles;}
@@ -120,26 +147,13 @@ public final class TravelGuideScreen extends Screen {
         if(hot){g.outline(x-3,y-3,s+6,s+6,0xFF64553B);g.fill(x+s-11,y+s-9,x+s+1,y+s+3,PAPER);arrow(g,1,x+s-5,y+s-3,true);}
     }
     private void paper(GuiGraphicsExtractor g) {
-        int w=(int)canvas.width(),h=(int)canvas.height();
-        g.fill(5,7,w+5,h+7,0x50382F20);g.fill(0,0,w,h,PAPER);g.fill(2,2,w-2,4,0xFFF4E5B9);
-        g.fill(0,h-3,w,h,0xFFBDA276);
-        int left=Math.max(0,(int)Math.floor(view.worldX(0)/140)-1),top=Math.max(0,(int)Math.floor(view.worldY(0)/140)-1);
-        int right=Math.min(Math.max(0,(w-110)/140+1),(int)Math.ceil(view.worldX(bw)/140)+1),bottom=Math.min(Math.max(0,(h-110)/140+1),(int)Math.ceil(view.worldY(bh)/140)+1);
+        // Sparse motifs stay bounded in screen space even at the minimum overview zoom.
+        int stride=1;while(140*stride*view.zoom()<45)stride*=2;int spacing=140*stride;
+        int left=(int)Math.floor(view.worldX(0)/spacing)-1,top=(int)Math.floor(view.worldY(0)/spacing)-1;
+        int right=(int)Math.ceil(view.worldX(bw)/spacing)+1,bottom=(int)Math.ceil(view.worldY(bh)/spacing)+1;
         for(int iy=top;iy<bottom;iy++)for(int ix=left;ix<right;ix++) {
-            int x=12+ix*140,y=12+iy*140,kind=Math.floorMod(ix+iy*3,4),color=0x227E987B;
-            if(kind==0){ // Terraced mountains, like a faint map printed on the paper.
-                for(int i=0;i<4;i++){int px=x+i*10,py=y+36-i*7;g.fill(px,py,px+11,py+2,color);g.fill(px+9,py-6,px+11,py+2,color);}
-                for(int i=0;i<3;i++)g.fill(x+41+i*8,y+16+i*7,x+50+i*8,y+18+i*7,color);
-            }else if(kind==1){
-                for(int i=0;i<5;i++){int py=y+i*9,px=x+(i%2)*7;g.fill(px,py,px+42,py+2,0x207D9C9D);g.fill(px+41,py,px+43,py+5,0x207D9C9D);}
-            }else if(kind==2){
-                g.fill(x+22,y+12,x+25,y+50,color);
-                for(int i=0;i<3;i++){int py=y+i*12;g.fill(x+7+i*4,py+9,x+39-i*3,py+16,color);g.fill(x+13+i*4,py+4,x+32-i*2,py+9,color);}
-            }else {
-                for(int i=0;i<38;i+=6){g.fill(x+i,y+4,x+i+2,y+6,0x228F7954);g.fill(x+38,y+i/2+5,x+40,y+i/2+7,0x228F7954);}
-                g.fill(x+36,y+28,x+43,y+30,0x228F7954);g.fill(x+39,y+25,x+41,y+33,0x228F7954);
-            }
-            g.fill(x+78,y+63,x+82,y+64,0x168A714C);g.fill(x+95,y+91,x+97,y+93,0x168A714C);
+            int x=ix*spacing,y=iy*spacing,kind=Math.floorMod(ix+iy*3,4);
+            g.blit(patterns,x,y,x+140,y+140,kind/4f,(kind+1)/4f,0f,1f);
         }
     }
     private void chrome(GuiGraphicsExtractor g) {
@@ -163,40 +177,48 @@ public final class TravelGuideScreen extends Screen {
         g.fill(x-10,y+15,x+11,y+18,0xFF343A32);g.fill(x-4,y-7,x+4,y+6,0xFF765037);
         g.fill(x-9,y-17,x+9,y-6,0xFF5C402E);g.fill(x-7,y-19,x+7,y-4,0xFF9C6946);g.fill(x-5,y-17,x+5,y-14,0xFFD3AC78);
     }
-    private List<TravelJournal.KnownStamp> observed(UUID id) {return journal.stamps(id,session.album().stamps());}
-    private List<TravelJournal.KnownStamp> stamps(UUID id) {return StampCatalog.bundled().merge(id,observed(id));}
-    private boolean areaSearched(UUID id) {return venues.stream().filter(v->v.id().equals(id)).anyMatch(journal::areaSearched);}
-    private boolean complete(UUID id) {return StampCatalog.bundled().complete(id,observed(id),areaSearched(id));}
-    public boolean needsInspection(UUID id) {return StampCatalog.bundled().needsInspection(id,journal.entry(id).searched(),observed(id),areaSearched(id));}
-    private TravelJournal.KnownStamp stamp(UUID id,String kind) {return stamps(id).stream().filter(s->s.id().equals(kind)).findFirst().orElse(null);}
+    private List<TravelJournal.KnownStamp> stamps(UUID id) {var state=states.get(id);return state==null?List.of():state.stamps;}
+    private boolean areaSearched(UUID id) {var state=states.get(id);return state!=null&&state.area;}
+    private boolean complete(UUID id) {var state=states.get(id);return state!=null&&state.complete;}
+    public boolean needsInspection(UUID id) {var state=states.get(id);return state==null||state.inspection;}
+    private TravelJournal.KnownStamp stamp(UUID id,String kind) {
+        var state=states.get(id);if(state==null)return null;
+        return kind.equals("visitor")?state.visitor:kind.equals("expert")?state.expert:state.stamps.stream().filter(s->s.id().equals(kind)).findFirst().orElse(null);
+    }
     private void picture(GuiGraphicsExtractor g,GuideVenue venue,int x,int y,int size) {
-        Identifier id=Identifier.parse(venue.icon());
-        if(minecraft.getResourceManager().getResource(id).isPresent())g.blit(id,x,y,x+size,y+size,0f,1f,0f,1f);
+        var icon=icons.computeIfAbsent(venue.icon(),source->{var id=Identifier.tryParse(source);return id!=null&&minecraft.getResourceManager().getResource(id).isPresent()?Optional.of(id):Optional.empty();});
+        if(icon.isPresent())g.blit(icon.get(),x,y,x+size,y+size,0f,1f,0f,1f);
         else {g.outline(x,y,size,size,0xFFB6B395);g.centeredText(font,Component.literal("?"),x+size/2,y+size/2-4,0xFF94977B);}
     }
-    private Identifier artwork(TravelJournal.KnownStamp stamp) {
+    private Identifier registerTexture(String kind,java.awt.image.BufferedImage image) {
+        var pixels=new NativeImage(image.getWidth(),image.getHeight(),false);
+        for(int y=0;y<image.getHeight();y++)for(int x=0;x<image.getWidth();x++)pixels.setPixel(x,y,image.getRGB(x,y));
+        var id=Identifier.fromNamespaceAndPath("postmark","guide/"+System.identityHashCode(this)+"/"+kind+serial++);
+        minecraft.getTextureManager().register(id,new DynamicTexture(()->"Guide "+kind,pixels));return id;
+    }
+    private void marker(GuiGraphicsExtractor g,int type,int x,int y) {
+        g.blit(markers,x-32,y-32,x+32,y+32,type/3f,(type+1)/3f,0f,1f);
+    }
+    private Identifier artwork(TravelJournal.KnownStamp stamp,boolean load) {
         if(stamp.asset()==null && stamp.item()==null)return null;
         String key=(stamp.id().equals("expert")?"gold/":"wood/")+(stamp.asset()!=null?"asset/"+stamp.asset():"item/"+stamp.item());
         if(art.containsKey(key))return art.get(key);
-        if(pending.contains(key)||failed.contains(key))return null;
-        pending.add(key);
+        if(!load || previewBudget==0 || pending.size()>=2 || pending.contains(key)||failed.contains(key))return null;
+        previewBudget--;pending.add(key);int generation=previewGeneration;
         CompletableFuture<java.awt.image.BufferedImage> future;
         try {future=stamp.asset()!=null?CompletableFuture.completedFuture(session.store().image(stamp.asset())):StampArtwork.capture(stamp.item());}
         catch(Exception e){future=CompletableFuture.failedFuture(e);}
         future=future.thenApply(image->dev.postmark.render.StampToolPainter.paint(new StampDefinition("guide/"+stamp.id(),stamp.id(),"preview",false),image));
         future.whenComplete((image,failure)->Minecraft.getInstance().execute(()->{
-            pending.remove(key);if(!live || Minecraft.getInstance().screen!=this)return;
+            if(generation!=previewGeneration)return;pending.remove(key);if(!live || Minecraft.getInstance().screen!=this)return;
             if(failure!=null){failed.add(key);Postmark.LOGGER.debug("Guide stamp preview unavailable: {}",key,failure);return;}
-            var pixels=new NativeImage(image.getWidth(),image.getHeight(),false);
-            for(int y=0;y<image.getHeight();y++)for(int x=0;x<image.getWidth();x++)pixels.setPixel(x,y,image.getRGB(x,y));
-            var id=Identifier.fromNamespaceAndPath("postmark","guide/"+System.identityHashCode(this)+"/"+serial++);
-            if(art.size()>=96){var oldest=art.entrySet().iterator();var entry=oldest.next();minecraft.getTextureManager().release(entry.getValue());oldest.remove();}
-            minecraft.getTextureManager().register(id,new DynamicTexture(()->"Guide stamp preview",pixels));art.put(key,id);
+            if(art.size()>=256){var oldest=art.entrySet().iterator();var entry=oldest.next();minecraft.getTextureManager().release(entry.getValue());oldest.remove();}
+            art.put(key,registerTexture("stamp",image));
         }));
         return art.get(key);
     }
     private void stampPicture(GuiGraphicsExtractor g,TravelJournal.KnownStamp stamp,int cx,int cy,int size) {
-        var texture=artwork(stamp);float scale=size/64f;
+        var texture=artwork(stamp,detail!=null||view.zoom()>=.55||stamp==stamp(hovering,"visitor")||stamp==stamp(hovering,"expert"));float scale=size/64f;
         g.pose().pushMatrix();g.pose().translate(cx,cy);g.pose().scale(scale,scale);
         if(texture!=null) {
             int tint=(stamp.owned()?0xFF000000:0x66000000)|0xFFFFFF;
@@ -210,79 +232,29 @@ public final class TravelGuideScreen extends Screen {
         }
         g.pose().popMatrix();
     }
-    private static void footprint(GuiGraphicsExtractor g,int x,int y) {
-        g.pose().pushMatrix();g.pose().rotateAbout(.12f,x,y);
-        g.fill(x-15,y-16,x+19,y+20,0x503D3022);
-        g.fill(x-16,y-18,x+16,y+18,0xFF785139);g.fill(x-18,y-16,x+18,y+16,0xFF785139);
-        g.fill(x-15,y-16,x+15,y+16,0xFFF3E4BA);g.fill(x-16,y-14,x+16,y+14,0xFFF3E4BA);
-        paw(g,x-7,y+5,1.25f,-.28f,0xFF80503A);
-        paw(g,x+7,y-7,1f,.32f,0xFF986348);
-        g.pose().popMatrix();
-    }
-    private static void paw(GuiGraphicsExtractor g,int x,int y,float scale,float angle,int color) {
-        // Four separate toe beans and a broad pad, staggered like a cat walking across the paper.
-        String[] pixels={"0001100110000","0011100111000","0011100111000","0001000010000",
-                "1100000000011","1110000000111","0110000000110","0000011100000",
-                "0000111110000","0001111111000","0001111111000","0000110110000"};
-        g.pose().pushMatrix();g.pose().translate(x,y);g.pose().rotate(angle);g.pose().scale(scale,scale);
-        for(int row=0;row<pixels.length;row++)for(int col=0;col<13;col++)if(pixels[row].charAt(col)=='1')
-            g.fill(col-6,row-6,col-5,row-5,color);
-        g.pose().popMatrix();
-    }
-    private static void inspectionMark(GuiGraphicsExtractor g,int x,int y) {
-        g.fill(x-10,y-12,x+12,y+14,0x503D3022);
-        g.fill(x-11,y-14,x+11,y+12,0xFF92653B);
-        g.fill(x-9,y-12,x+9,y+10,0xFFF0CC79);
-        String[] mark={"01110","11011","00011","00110","00100","00000","00100"};
-        for(int row=0;row<mark.length;row++)for(int col=0;col<5;col++)if(mark[row].charAt(col)=='1')
-            g.fill(x-5+col*2,y-7+row*2,x-3+col*2,y-5+row*2,0xFF63432D);
-    }
-    private static void completeMark(GuiGraphicsExtractor g,int x,int y) {
-        int r=11;g.pose().pushMatrix();g.pose().rotateAbout(-.15f,x,y);
-        disc(g,x+1,y+2,r+2,0x60413424);
-        disc(g,x,y,r+2,0xFFF7EAC6);
-        disc(g,x,y,r,0xFF356647);
-        disc(g,x,y,r-2,0xFFF6EBD0);
-        int stroke=3;
-        markLine(g,x-6,y,x-2,y+4,stroke);
-        markLine(g,x-2,y+4,x+6,y-5,stroke);
-        g.pose().popMatrix();
-    }
-    private static void disc(GuiGraphicsExtractor g,int x,int y,int radius,int color) {
-        for(int row=-radius;row<=radius;row++) {
-            int half=(int)Math.sqrt(radius*radius-row*row);
-            g.fill(x-half,y+row,x+half+1,y+row+1,color);
-        }
-    }
-    private static void markLine(GuiGraphicsExtractor g,int x1,int y1,int x2,int y2,int width) {
-        int steps=Math.max(Math.abs(x2-x1),Math.abs(y2-y1));
-        for(int i=0;i<=steps;i++) {
-            int x=x1+Math.round((x2-x1)*i/(float)steps),y=y1+Math.round((y2-y1)*i/(float)steps);
-            g.fill(x-width/2,y-width/2,x-width/2+width,y-width/2+width,0xFF285638);
-        }
-    }
     @Override public void extractBackground(GuiGraphicsExtractor g,int mx,int my,float t) {if(minecraft.level==null)extractPanorama(g,t);extractBlurredBackground(g);}
     @Override public void extractRenderState(GuiGraphicsExtractor g,int mx,int my,float t) {
-        layout();long time=now();double dt=(time-lastFrame)/1000.0;lastFrame=time;view.step(dt);
+        previewBudget=2;layout();long time=now();double dt=(time-lastFrame)/1000.0;lastFrame=time;view.step(dt);
         Hit hover=dragging||detail!=null?null:hit(mx,my);hovering=hover==null?null:hover.venue;
         float amount=(float)(1-Math.exp(-Math.clamp(dt,0,.1)/.075));
         for(var tile:tiles()){UUID id=tile.venue.id();float v=enlargement.getOrDefault(id,0f),target=id.equals(hovering)?1:0;enlargement.put(id,v+(target-v)*amount);}
         g.fill(0,0,width,height,0xAA353E34);g.fill(bx-3,by-3,bx+bw+3,by+bh+3,0x403D4336);
         g.enableScissor(bx,by,bx+bw,by+bh);
+        g.fill(bx,by,bx+bw,by+bh,PAPER);
         g.pose().pushMatrix();g.pose().translate((float)(bx+view.x()),(float)(by+view.y()));g.pose().scale((float)view.zoom(),(float)view.zoom());
         paper(g);
         for(var tile:paintOrder()) {
             boolean hot=tile.venue.id().equals(hovering);float cx=tile.x+tile.size/2f,cy=tile.y+tile.size/2f,k=(float)hoverScale(tile.venue.id());
             g.pose().pushMatrix();g.pose().translate(cx,cy);g.pose().scale(k,k);g.pose().translate(-cx,-cy);g.pose().rotateAbout(tile.angle,cx,cy);
             scrap(g,tile,hot);
-            var known=stamps(tile.venue.id());
-            boolean done=complete(tile.venue.id());
+            var state=states.get(tile.venue.id());
+            boolean done=state.complete;
             if(done){g.outline(tile.x-3,tile.y-3,tile.size+6,tile.size+6,0xFF356647);g.outline(tile.x-4,tile.y-4,tile.size+8,tile.size+8,0xFF356647);}
-            if(journal.entry(tile.venue.id()).searched())footprint(g,tile.x+tile.size-12,tile.y+tile.size-16);
+            if(state.searched)marker(g,0,tile.x+tile.size-12,tile.y+tile.size-16);
             for(String kind:List.of("visitor","expert")){var s=stamp(tile.venue.id(),kind);if(s!=null)stampPicture(g,s,kind.equals("visitor")?tile.x:tile.x+tile.size,tile.y,24);}
-            if(needsInspection(tile.venue.id()))inspectionMark(g,tile.x+tile.size/2,tile.y-16);
-            else if(done)completeMark(g,tile.x+tile.size/2,tile.y-16);
-            long extra=known.stream().filter(s->!s.id().equals("visitor")&&!s.id().equals("expert")).count();
+            if(state.inspection)marker(g,1,tile.x+tile.size/2,tile.y-16);
+            else if(done)marker(g,2,tile.x+tile.size/2,tile.y-16);
+            long extra=state.extra;
             if(extra>0){g.fill(tile.x-8,tile.y+tile.size-10,tile.x+11,tile.y+tile.size+2,0xFFDFC995);g.text(font,Component.literal("+"+extra),tile.x-6,tile.y+tile.size-8,INK,false);}
             g.pose().popMatrix();
         }
@@ -290,7 +262,7 @@ public final class TravelGuideScreen extends Screen {
         if(venues.isEmpty())g.centeredText(font,Component.literal(GuideBridge.available()?"等待展馆目录…":"当前世界没有 SMU 展馆"),bx+bw/2,by+bh/2,0xFF7E8467);
         chrome(g);
         if(detail!=null)drawDetail(g,mx,my);
-        String hint=hint(hit(mx,my));if(!error.isEmpty())hint=error;else if(hint.isBlank())hint=GuideBridge.status();
+        String hint=hint(detail!=null?hit(mx,my):hover);if(!error.isEmpty())hint=error;else if(hint.isBlank())hint=GuideBridge.status();
         HoverHint.draw(g,font,hint,width,height);
     }
     private static void arrow(GuiGraphicsExtractor g,int direction,int x,int y,boolean enabled) {for(int r=-2;r<=2;r++){int dx=(Math.abs(r)-1)*2*-direction;g.fill(x+dx,y+r*2,x+dx+2,y+r*2+2,enabled?0xFF8A9674:0x5598997B);}}
@@ -339,12 +311,13 @@ public final class TravelGuideScreen extends Screen {
             var local=t.local(cx+(wx-cx)/k,cy+(wy-cy)/k);double tx=local[0],ty=local[1];
             if(needsInspection(t.venue.id()) && Math.abs(tx-(t.x+t.size/2.0))<=12 && Math.abs(ty-(t.y-16))<=15)return new Hit("inspection",t.venue.id(),null);
             if(!needsInspection(t.venue.id()) && complete(t.venue.id()) && Math.abs(tx-(t.x+t.size/2.0))<=14 && Math.abs(ty-(t.y-16))<=15)return new Hit("complete",t.venue.id(),null);
-            if(journal.entry(t.venue.id()).searched() && Math.abs(tx-(t.x+t.size-12))<=18 && Math.abs(ty-(t.y+t.size-16))<=18)return new Hit("footprint",t.venue.id(),null);
+            if(states.get(t.venue.id()).searched && Math.abs(tx-(t.x+t.size-12))<=22 && Math.abs(ty-(t.y+t.size-16))<=22)return new Hit("footprint",t.venue.id(),null);
             for(String kind:List.of("visitor","expert"))if(stamp(t.venue.id(),kind)!=null && Math.abs(tx-(kind.equals("visitor")?t.x:t.x+t.size))<=17&&ty>=t.y-25&&ty<=t.y+17)return new Hit("stamp",t.venue.id(),kind);
-            boolean extra=stamps(t.venue.id()).stream().anyMatch(s->!s.id().equals("visitor")&&!s.id().equals("expert"));
+            boolean extra=states.get(t.venue.id()).extra>0;
             if(extra&&tx>=t.x-9&&tx<=t.x+13&&ty>=t.y+t.size-11&&ty<=t.y+t.size+3)return new Hit("details",t.venue.id(),null);
-            if(tx>=t.x&&tx<=t.x+t.size&&ty>=t.y&&ty<=t.y+t.size)return new Hit("travel",t.venue.id(),null);
-            if(tx>=t.x-10&&tx<=t.x+t.size+8&&ty>=t.y+t.size+5&&ty<=t.y+t.size+25)return new Hit("details",t.venue.id(),null);
+            // The visible paper border belongs to the enlarged tile too, not just its inset image.
+            if(tx>=t.x-10&&tx<=t.x+t.size+8&&ty>=t.y+t.size+2&&ty<=t.y+t.size+25)return new Hit("details",t.venue.id(),null);
+            if(tx>=t.x-10&&tx<=t.x+t.size+8&&ty>=t.y-10&&ty<t.y+t.size+2)return new Hit("travel",t.venue.id(),null);
         }
         return null;
     }
@@ -403,6 +376,6 @@ public final class TravelGuideScreen extends Screen {
     @Override public boolean keyPressed(KeyEvent e) {if(e.key()==256){onClose();return true;}return super.keyPressed(e);}
     @Override public void tick() {sync();}
     @Override public void onClose() {if(detail!=null){detail=null;return;}minecraft.setScreen(parent);}
-    @Override public void removed() {live=false;for(var id:art.values())minecraft.getTextureManager().release(id);art.clear();pending.clear();}
+    @Override public void removed() {live=false;if(cameraReady&&!venues.isEmpty())try{session.saveGuideView(view.bookmark());}catch(Exception e){Postmark.LOGGER.warn("Cannot save travel guide view",e);}previewGeneration++;if(markers!=null){minecraft.getTextureManager().release(markers);markers=null;}if(patterns!=null){minecraft.getTextureManager().release(patterns);patterns=null;}icons.clear();for(var id:art.values())minecraft.getTextureManager().release(id);art.clear();pending.clear();}
     @Override public boolean isPauseScreen() {return false;}
 }

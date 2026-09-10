@@ -2,13 +2,23 @@ package dev.postmark.model;
 
 /** Smooth screen-space camera. Zoom and translation interpolate together around the cursor. */
 public final class GuideViewport {
+    public record Bookmark(double centerX,double centerY,double zoom) {
+        public Bookmark {if(!Double.isFinite(centerX)||!Double.isFinite(centerY)||!Double.isFinite(zoom)||zoom<=0)throw new IllegalArgumentException("Invalid guide view");}
+    }
     private double x,y,zoom=1,targetX,targetY,targetZoom=1,w,h,paperW,paperH;
     public double x(){return x;} public double y(){return y;} public double zoom(){return zoom;}
     public double worldX(double px){return (px-x)/zoom;} public double worldY(double py){return (py-y)/zoom;}
     public void resize(double w,double h,double paperW,double paperH,boolean reset) {
         boolean changed=this.w!=w || this.h!=h || this.paperW!=paperW || this.paperH!=paperH;
+        var saved=this.paperW>0&&this.paperH>0?bookmark():null;
         this.w=w;this.h=h;this.paperW=paperW;this.paperH=paperH;
-        if(reset || changed)fit(true);
+        if(reset)fit(true);else if(changed){if(saved==null)fit(true);else restore(saved);}
+    }
+    public Bookmark bookmark() {return new Bookmark((w/2-targetX)/targetZoom/paperW,(h/2-targetY)/targetZoom/paperH,targetZoom);}
+    public void restore(Bookmark saved) {
+        targetZoom=Math.clamp(saved.zoom,Math.max(.015,fitZoom()*.7),2.4);
+        targetX=w/2-saved.centerX*paperW*targetZoom;targetY=h/2-saved.centerY*paperH*targetZoom;boundTarget();
+        x=targetX;y=targetY;zoom=targetZoom;
     }
     public double fitZoom(){return Math.min(1,Math.min((w-16)/paperW,(h-16)/paperH));}
     public void fit(boolean immediate) {

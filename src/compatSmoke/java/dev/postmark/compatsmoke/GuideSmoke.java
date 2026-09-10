@@ -47,7 +47,40 @@ public final class GuideSmoke {
     private static double zoomBefore,anchorX,anchorY;
     private static void next(){stage++;at=ticks;}
     private static MouseButtonEvent mouse(double x,double y){return new MouseButtonEvent(x,y,new MouseButtonInfo(0,0));}
-    private static void click(double x,double y){var mc=Minecraft.getInstance();var screen=mc.screen;screen.mouseClicked(mouse(x,y),false);if(mc.screen==screen)screen.mouseReleased(mouse(x,y));}
+    private static void click(double x,double y){var mc=Minecraft.getInstance();var screen=mc.screen;if(!net.neoforged.neoforge.client.ClientHooks.onScreenMouseClickedPre(screen,mouse(x,y),false))screen.mouseClicked(mouse(x,y),false);if(mc.screen==screen&&!net.neoforged.neoforge.client.ClientHooks.onScreenMouseReleasedPre(screen,mouse(x,y)))screen.mouseReleased(mouse(x,y));}
+    private static GuideEntry inventoryEntry() {return (GuideEntry)Minecraft.getInstance().screen.children().stream().filter(GuideEntry.class::isInstance).findFirst().orElseThrow();}
+    private static void dragEntry(int x,int y) {
+        var mc=Minecraft.getInstance();var screen=mc.screen;var entry=inventoryEntry();double px=entry.getX()+27,py=entry.getY()+20;
+        var hooks=new net.neoforged.neoforge.client.event.ScreenEvent.MouseButtonPressed.Pre(screen,mouse(px,py),false);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(hooks);if(!hooks.isCanceled())throw new AssertionError("Entry press leaked to container");
+        if(!net.neoforged.neoforge.client.ClientHooks.onScreenMouseDragPre(screen,mouse(x+27,y+20),x+27-px,y+20-py))throw new AssertionError("Entry drag leaked to container");
+        if(!net.neoforged.neoforge.client.ClientHooks.onScreenMouseReleasedPre(screen,mouse(x+27,y+20)))throw new AssertionError("Entry release leaked to container");
+        if(mc.screen!=screen)throw new AssertionError("Dragging entry opened guide");
+    }
+    private static void verifyEntryDrag() throws Exception {
+        var mc=Minecraft.getInstance();var previous=mc.gameMode.getPlayerMode();
+        for(var mode:List.of(GameType.SURVIVAL,GameType.CREATIVE)) {
+            mc.gameMode.setLocalMode(mode);mc.setScreen(new InventoryScreen(mc.player));
+            var menu=((net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>)mc.screen).getMenu();
+            var before=menu.getCarried();var held=new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.STONE,7);menu.setCarried(held);
+            dragEntry(-200,-200);if(inventoryEntry().getX()!=6||inventoryEntry().getY()!=6)throw new AssertionError("Entry escaped screen bounds");
+            dragEntry(24,65);if(!net.minecraft.world.item.ItemStack.matches(held,menu.getCarried()))throw new AssertionError("Entry drag changed carried item");menu.setCarried(before);
+            var saved=new dev.postmark.storage.GuideEntryPositionStore(mc.gameDirectory.toPath()).load();
+            if(saved==null)throw new AssertionError("Entry position not saved");
+            mc.setScreen(new InventoryScreen(mc.player));var entry=inventoryEntry();
+            if(entry.getX()!=24||entry.getY()!=65)throw new AssertionError("Reopened inventory lost entry position");
+        }
+        mc.gameMode.setLocalMode(previous);
+    }
+    private static void verifyReopenCamera() throws Exception {
+        var mc=Minecraft.getInstance();var before=guide;
+        var point=guide.iconCenter(TARGET);double zoom=guide.zoomLevel();
+        // Closing persists the view; a new screen must restore it without another entrance zoom.
+        guide.onClose();TravelGuideScreen.show(mc.screen);guide=(TravelGuideScreen)mc.screen;
+        var after=guide.iconCenter(TARGET);
+        if(Math.abs(zoom-guide.zoomLevel())>.001 || Math.hypot(point[0]-after[0],point[1]-after[1])>1)throw new AssertionError("Reopened guide lost camera");
+        if(new dev.postmark.storage.GuideViewStore(ClientSession.get().store().directory()).load()==null)throw new AssertionError("Guide camera not persisted");
+    }
     private static GuideVenue venue(UUID id) {return GuideBridge.venues().stream().filter(v->v.id().equals(id)).findFirst().orElseThrow();}
     private static void open() {TravelGuideScreen.show(null);guide=(TravelGuideScreen)Minecraft.getInstance().screen;}
     private static void counter(net.minecraft.server.level.ServerLevel level,BlockPos pos,String id,Identifier item) {
@@ -120,6 +153,9 @@ public final class GuideSmoke {
                 var anchor=guide.iconCenter(TARGET);
                 if(Math.hypot(anchor[0]-anchorX,anchor[1]-anchorY)>1)throw new AssertionError("Cursor zoom drifted");
                 if(guide.hoverScale(TARGET)<1.10)throw new AssertionError("Native mouse hover did not enlarge paper: "+guide.hoverScale(TARGET)+" mouse="+mc.mouseHandler.getScaledXPos(mc.getWindow())+","+mc.mouseHandler.getScaledYPos(mc.getWindow())+" target="+anchorX+","+anchorY);
+                var edge=guide.captionEdge(TARGET);click(edge[0],edge[1]);
+                if(!TARGET.equals(guide.detailVenue()))throw new AssertionError("Enlarged caption border did not follow hover and wheel zoom");
+                guide.onClose();
                 shot="03-canvas-hover-zoom.png";
                 stage=50;at=ticks;
             }else if(stage==50 && ticks-at==6){var p=guide.fitCenter();click(p[0],p[1]);
@@ -169,10 +205,10 @@ public final class GuideSmoke {
                 if(ClientSession.get().album().selected().imprints().isEmpty())throw new AssertionError("Picked-up guide stamp did not stamp");
                 mc.setScreen(new InventoryScreen(mc.player));next();
             }else if(stage==17 && ticks-at==8){
-                if(mc.screen.children().stream().noneMatch(GuideEntry.class::isInstance))throw new AssertionError("Inventory guide entry missing");shot="09-inventory-entry.png";
+                if(mc.screen.children().stream().noneMatch(GuideEntry.class::isInstance))throw new AssertionError("Inventory guide entry missing");verifyEntryDrag();shot="09-inventory-entry.png";
             }else if(stage==17 && ticks-at>12){
                 var entry=(GuideEntry)mc.screen.children().stream().filter(GuideEntry.class::isInstance).findFirst().orElseThrow();
-                click(entry.getX()+27,entry.getY()+20);if(!(mc.screen instanceof TravelGuideScreen))throw new AssertionError("Inventory mouse entry failed");guide=(TravelGuideScreen)mc.screen;next();
+                click(entry.getX()+27,entry.getY()+20);if(!(mc.screen instanceof TravelGuideScreen))throw new AssertionError("Inventory mouse entry failed");guide=(TravelGuideScreen)mc.screen;verifyReopenCamera();next();
             }else if(stage==18 && ticks-at==6){shot="13-inventory-canvas-readable.png";
             }else if(stage==18 && ticks-at==7){var p=guide.fitCenter();click(p[0],p[1]);
             }else if(stage==18 && ticks-at==18){shot="12-inventory-canvas-entry.png";
@@ -231,7 +267,7 @@ public final class GuideSmoke {
                 if(StampCatalog.bundled().complete(REMOTE,session.journal().stamps(REMOTE,session.album().stamps()),session.journal().areaSearched(venue(REMOTE))))throw new AssertionError("New unowned stamp must revoke single completion");
                 next();
             }else if(stage==28){
-                Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"PASS: unsearched preset and ordinary venues show question; observed slots remove question; completed waypoint area resolves single or empty venue questions; single collection completes and new expert revokes completion; area evidence persists; question, completion tag and cat footprint open details; loaded client chunk discovery 96 blocks away; unloaded server counter ignored; repeat scan updates artwork after movement; real SMU 1.1.12 gallery icons and metadata; bundled preset ghosts without discovery or ownership; all 15 venues on one canvas and every caption; cursor-anchored smooth zoom; native mouse event hover enlargement; canvas drag without teleport; inventory stamp desk and return; canvas GUI 2 and 3; rotated caption and corner targets; desk and inventory mouse entries; isolated stamp hit targets; drag cancellation; real UUID teleport; SMU #visited and arrival alone never mark searched; completed loaded-chunk survey records two unowned stamps and de-duplicates counters; separate journal persists; actual counter interactions collect visitor/expert; regular completion; newly discovered third stamp revokes completion; owned stamp pickup and postcard imprint; empty survey has no invented slots. Synthetic exhibition fixtures, not a production server.");
+                Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"PASS: survival and creative inventory entry drag captures press/drag/release without moving carried items; screen bounds and persisted position on reopen; guide camera restored from disk; unsearched preset and ordinary venues show question; observed slots remove question; completed waypoint area resolves single or empty venue questions; single collection completes and new expert revokes completion; area evidence persists; question, completion tag and cat footprint open details; loaded client chunk discovery 96 blocks away; unloaded server counter ignored; repeat scan updates artwork after movement; real SMU 1.1.12 gallery icons and metadata; bundled preset ghosts without discovery or ownership; all 15 venues on one canvas and every caption; cursor-anchored smooth zoom; native mouse event hover enlargement; canvas drag without teleport; inventory stamp desk and return; canvas GUI 2 and 3; rotated caption and corner targets; desk and inventory mouse entries; isolated stamp hit targets; drag cancellation; real UUID teleport; SMU #visited and arrival alone never mark searched; completed loaded-chunk survey records two unowned stamps and de-duplicates counters; separate journal persists; actual counter interactions collect visitor/expert; regular completion; newly discovered third stamp revokes completion; owned stamp pickup and postcard imprint; empty survey has no invented slots. Synthetic exhibition fixtures, not a production server.");
                 mc.stop();stage=99;
             }
         }catch(Throwable e){Postmark.LOGGER.error("GUIDE SMOKE FAILED stage="+stage,e);try{Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"FAIL stage="+stage+": "+e);}catch(Exception ignored){}mc.stop();stage=99;}

@@ -46,6 +46,8 @@ public final class ClientSession {
         if(journal==null)journal=new dev.postmark.storage.TravelJournalStore(store.directory()).load();
         return journal;
     }
+    public GuideViewport.Bookmark guideView() throws IOException {return new dev.postmark.storage.GuideViewStore(store.directory()).load();}
+    public void saveGuideView(GuideViewport.Bookmark view) throws IOException {new dev.postmark.storage.GuideViewStore(store.directory()).save(view);}
     public void updateJournal(TravelJournal next) throws IOException {
         if(next.equals(journal()))return;
         new dev.postmark.storage.TravelJournalStore(store.directory()).save(next);journal=next;

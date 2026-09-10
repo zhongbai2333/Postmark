@@ -1,5 +1,8 @@
 package dev.postmark.client;
 
+import dev.postmark.Postmark;
+import dev.postmark.model.GuideEntryPosition;
+import dev.postmark.storage.GuideEntryPositionStore;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -15,11 +18,34 @@ import net.neoforged.neoforge.client.event.ScreenEvent;
 /** A folded paper publication, shared by the desk and inventory mouse entries. */
 public final class GuideEntry extends AbstractWidget {
     private final Screen parent;
-    private GuideEntry(Screen parent) {super(0,0,54,40,Component.literal("打开漫游志"));this.parent=parent;position();}
+    private final GuideEntryPositionStore positions=new GuideEntryPositionStore(Minecraft.getInstance().gameDirectory.toPath());
+    private boolean pressed,dragging;
+    private double pressX,pressY;
+    private int originX,originY;
+    private String error="";
+    private GuideEntry(Screen parent) {super(0,0,54,40,Component.literal("漫游志：点击打开，拖动调整位置"));this.parent=parent;position();}
     private void position() {
         var inventory=(AbstractContainerScreen<?>)parent;
         setX(Math.min(parent.width-58,inventory.getGuiLeft()+inventory.getXSize()+8));
         setY(Math.clamp(inventory.getGuiTop()+10,8,Math.max(8,parent.height-44)));
+        try {var saved=positions.load();place(saved==null?relative(getX(),getY()):saved);}
+        catch(java.io.IOException e) {place(relative(getX(),getY()));Postmark.LOGGER.warn("Cannot load guide entry position",e);}
+    }
+    private GuideEntryPosition relative(int x,int y) {return GuideEntryPosition.at(x,y,parent.width,parent.height,getWidth(),getHeight());}
+    private void place(GuideEntryPosition position) {setX(position.x(parent.width,getWidth()));setY(position.y(parent.height,getHeight()));}
+    private static GuideEntry entry(Screen screen) {return screen.children().stream().filter(GuideEntry.class::isInstance).map(GuideEntry.class::cast).findFirst().orElse(null);}
+    // Consume the entire gesture before container slots handle it, including releases outside the entry.
+    public static void screenMousePressed(ScreenEvent.MouseButtonPressed.Pre event) {
+        var entry=entry(event.getScreen());
+        if(entry!=null && entry.mouseClicked(event.getMouseButtonEvent(),event.isDoubleClick()))event.setCanceled(true);
+    }
+    public static void screenMouseDragged(ScreenEvent.MouseDragged.Pre event) {
+        var entry=entry(event.getScreen());
+        if(entry!=null && entry.mouseDragged(event.getMouseButtonEvent(),event.getDragX(),event.getDragY()))event.setCanceled(true);
+    }
+    public static void screenMouseReleased(ScreenEvent.MouseButtonReleased.Pre event) {
+        var entry=entry(event.getScreen());
+        if(entry!=null && entry.mouseReleased(event.getMouseButtonEvent()))event.setCanceled(true);
     }
     public static int deskX(int width) {return Math.min(108,width-34);}
     public static int deskY(int height) {return (int)(height*.1)+36;}
@@ -45,10 +71,31 @@ public final class GuideEntry extends AbstractWidget {
         g.pose().popMatrix();
     }
     @Override protected void extractWidgetRenderState(GuiGraphicsExtractor g,int mx,int my,float t) {
-        position();
-        draw(g,getX()+27,getY()+20,isHoveredOrFocused());
-        if(isHoveredOrFocused())HoverHint.draw(g,Minecraft.getInstance().font,"展开漫游志",parent.width,parent.height);
+        draw(g,getX()+27,getY()+20,isHoveredOrFocused()||dragging);
+        if(isHoveredOrFocused()||pressed)HoverHint.draw(g,Minecraft.getInstance().font,error.isEmpty()?(dragging?"松开放在这里":"点击打开 · 拖动挪位置"):error,parent.width,parent.height);
     }
-    @Override public void onClick(MouseButtonEvent event,boolean twice) {TravelGuideScreen.show(parent);}
+    @Override public boolean mouseClicked(MouseButtonEvent event,boolean twice) {
+        if(event.button()!=0 || !isMouseOver(event.x(),event.y()))return false;
+        pressed=true;dragging=false;error="";pressX=event.x();pressY=event.y();originX=getX();originY=getY();return true;
+    }
+    private void move(MouseButtonEvent event) {
+        double dx=event.x()-pressX,dy=event.y()-pressY;
+        if(dx*dx+dy*dy>=16)dragging=true;
+        if(dragging)place(relative(originX+(int)Math.round(dx),originY+(int)Math.round(dy)));
+    }
+    @Override public boolean mouseDragged(MouseButtonEvent event,double dx,double dy) {
+        if(!pressed || event.button()!=0)return false;
+        move(event);return true;
+    }
+    @Override public boolean mouseReleased(MouseButtonEvent event) {
+        if(!pressed || event.button()!=0)return false;
+        move(event);pressed=false;
+        if(dragging) {
+            dragging=false;
+            try {positions.save(relative(getX(),getY()));}
+            catch(java.io.IOException e) {error="位置未能保存，请再拖动一次";Postmark.LOGGER.warn("Cannot save guide entry position",e);}
+        } else if(isMouseOver(event.x(),event.y())) {playDownSound(Minecraft.getInstance().getSoundManager());TravelGuideScreen.show(parent);}
+        return true;
+    }
     @Override protected void updateWidgetNarration(NarrationElementOutput output) {defaultButtonNarrationText(output);}
 }

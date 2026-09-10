@@ -22,6 +22,8 @@ public final class PostcardAlbumScreen extends Screen {
     private UUID deletion;
     private String error="";
     private int bx,by,bw,bh,lw;
+    private Identifier watermark;
+    private final String playerName=net.minecraft.client.Minecraft.getInstance().getUser().getName();
     private record Slot(int x,int y,int w,int h,int index) {
         boolean hit(double px,double py) {return px>=x && px<x+w && py>=y && py<y+h;}
         int deleteX() {return x+w-14;} int deleteY() {return y+h-13;}
@@ -36,7 +38,18 @@ public final class PostcardAlbumScreen extends Screen {
     public UUID pendingDeletion() {return deletion;}
     private boolean turning() {return turnAt!=0;}
     private void layout() {bw=Math.min(600,width-64);bh=Math.min(346,height-82);lw=(bw-12)/2;bx=(width-bw)/2;by=(height-bh)/2-4;}
-    @Override protected void init() {layout();prepare();}
+    @Override protected void init() {layout();prepare();prepareWatermark();}
+    private void prepareWatermark() {
+        if(watermark!=null)return;
+        try(var input=minecraft.getResourceManager().open(Identifier.fromNamespaceAndPath("postmark","textures/paper/teacon.png"))) {
+            var source=javax.imageio.ImageIO.read(input);if(source==null)throw new java.io.IOException("Unreadable TeaCon logo");
+            var pixels=new NativeImage(source.getWidth(),source.getHeight(),false);
+            for(int y=0;y<source.getHeight();y++)for(int x=0;x<source.getWidth();x++)pixels.setPixel(x,y,(source.getRGB(x,y)&0xFF000000)|0xD1B687);
+            watermark=Identifier.fromNamespaceAndPath("postmark","album/"+System.identityHashCode(this)+"/watermark");
+            minecraft.getTextureManager().register(watermark,new DynamicTexture(()->"TeaCon album watermark",pixels));
+        }catch(Exception e){dev.postmark.Postmark.LOGGER.warn("Cannot load album watermark",e);}
+    }
+
     private List<Slot> slots(int page) {
         var result=new ArrayList<Slot>();int tw=(lw-30)/2,th=(bh-40)/2;
         for(int i=0;i<8;i++) {
@@ -68,10 +81,18 @@ public final class PostcardAlbumScreen extends Screen {
     @Override public void extractBackground(GuiGraphicsExtractor g,int x,int y,float t) {
         if(minecraft.level==null) extractPanorama(g,t);extractBlurredBackground(g);
     }
+    private void paperWatermark(GuiGraphicsExtractor g,int left) {
+        int logo=Math.max(24,(int)Math.min(lw*.4,bh*.29)),cx=left+lw/2,top=by+bh/2-logo/2-10;
+        if(watermark!=null)g.blit(watermark,cx-logo/2,top,cx+logo/2,top+logo,0f,1f,0f,1f);
+        float scale=Math.min(1.25f,(lw-24f)/Math.max(1,font.width(playerName)));
+        g.pose().pushMatrix();g.pose().translate(cx,top+logo+10);g.pose().scale(scale,scale);
+        g.text(font,Component.literal(playerName),-font.width(playerName)/2,0,0xFFD1B087,false);g.pose().popMatrix();
+    }
     private void leaf(GuiGraphicsExtractor g,int page,int side) {
         int left=bx+side*(lw+12);
-        g.fill(left,by,left+lw,by+bh,0xFFECE2C9);g.fill(left+2,by+2,left+lw-2,by+4,0xFFFFF4D9);
+        g.fill(left,by,left+lw,by+bh,0xFFE8D8AD);g.fill(left+2,by+2,left+lw-2,by+4,0xFFFFF4D9);
         g.fill(left+2,by+bh-3,left+lw-2,by+bh,0xFFBEAC88);
+        paperWatermark(g,left);
         for(var slot:slots(page)) if((slot.index%8)/4==side) drawSlot(g,slot);
     }
     private void drawSlot(GuiGraphicsExtractor g,Slot slot) {
@@ -149,6 +170,6 @@ public final class PostcardAlbumScreen extends Screen {
         return true;
     }
     @Override public void onClose() {if(deletion!=null) {deletion=null;return;}if(!turning()) minecraft.setScreen(parent);}
-    @Override public void removed() {for(var id:thumbnails.values()) minecraft.getTextureManager().release(id);thumbnails.clear();}
+    @Override public void removed() {if(watermark!=null){minecraft.getTextureManager().release(watermark);watermark=null;}for(var id:thumbnails.values()) minecraft.getTextureManager().release(id);thumbnails.clear();}
     @Override public boolean isPauseScreen() {return false;}
 }
