@@ -43,7 +43,8 @@ public final class TravelGuideScreen extends Screen {
     private UUID detail;
     private Hit pressed;
     private String error="";
-    private boolean live;
+    private boolean live,preparingSticker;
+    private Runnable readySticker;
     private int previewBudget,previewGeneration;
     private Identifier markers,patterns;
     private final Map<String,Optional<Identifier>> icons=new HashMap<>();
@@ -337,7 +338,7 @@ public final class TravelGuideScreen extends Screen {
     private static void arrow(GuiGraphicsExtractor g,int direction,int x,int y,boolean enabled) {for(int r=-2;r<=2;r++){int dx=(Math.abs(r)-1)*2*-direction;g.fill(x+dx,y+r*2,x+dx+2,y+r*2+2,enabled?0xFF8A9674:0x5598997B);}}
     private int dx(){return (width-Math.min(360,width-40))/2;}private int dy(){return (height-Math.min(290,height-38))/2;}
     private int dw(){return Math.min(360,width-40);}private int dh(){return Math.min(290,height-38);}
-    private int detailRows(){return Math.max(1,(dh()-106)/52);}private int detailCapacity(){return detailRows()*4;}
+    private int detailRows(){return Math.max(1,(dh()-132)/52);}private int detailCapacity(){return detailRows()*4;}
     private void drawDetail(GuiGraphicsExtractor g,int mx,int my) {
         var venue=venues.stream().filter(v->v.id().equals(detail)).findFirst().orElse(null);if(venue==null){detail=null;return;}
         int x=dx(),y=dy(),w=dw(),h=dh();g.fill(0,0,width,height,0x66303A2A);g.fill(x+3,y+4,x+w+3,y+h+4,0x44302B1F);g.fill(x,y,x+w,y+h,0xFFF6ECD0);
@@ -356,6 +357,8 @@ public final class TravelGuideScreen extends Screen {
         }
         if(known.isEmpty())g.centeredText(font,Component.literal(areaSearched(detail)?"周边未发现印章":journal.entry(detail).searched()?"尚未发现印章":"等待探索"),x+w/2,y+80,0xFF9B967B);
         if(known.size()>detailCapacity()){arrow(g,-1,x+18,y+h-18,detailPage>0);arrow(g,1,x+w-18,y+h-18,(detailPage+1)*detailCapacity()<known.size());}
+        g.fill(x+w/2-45,y+h-53,x+w/2+45,y+h-32,0xFFBA9865);
+        g.centeredText(font,Component.literal(preparingSticker?"准备贴纸…":"贴到明信片"),x+w/2,y+h-47,0xFFF7EED6);
         g.fill(x+w/2-45,y+h-28,x+w/2+45,y+h-7,venue.canTeleport()?0xFF6A7C56:0xFFB4B096);
         g.centeredText(font,Component.literal(venue.canTeleport()?"前往展馆":"未设置传送点"),x+w/2,y+h-22,0xFFF7EED6);
     }
@@ -363,6 +366,7 @@ public final class TravelGuideScreen extends Screen {
         if(detail!=null) {
             int dx=dx(),dy=dy(),w=dw(),h=dh();
             if(DeskControls.hit(x,y,dx+w-15,dy+15))return new Hit("dismiss",detail,null);
+            if(Math.abs(x-(dx+w/2))<=45 && y>=dy+h-53 && y<=dy+h-32)return new Hit("sticker",detail,null);
             if(Math.abs(x-(dx+w/2))<=45 && y>=dy+h-28 && y<=dy+h-7)return new Hit("travel",detail,null);
             if(DeskControls.hit(x,y,dx+18,dy+h-18))return new Hit("detailPrev",detail,null);
             if(DeskControls.hit(x,y,dx+w-18,dy+h-18))return new Hit("detailNext",detail,null);
@@ -397,6 +401,7 @@ public final class TravelGuideScreen extends Screen {
         return switch(hit.action){
             case "travel" -> venue!=null?(venue.canTeleport()?"前往 "+venue.name():"这个展馆尚未设置传送点"):"";
             case "details" -> "查看展馆介绍";
+            case "sticker" -> "把展馆图片与名字贴到明信片 · 不带章和状态标识";
             case "filter" -> switch(GuideFilter.valueOf(hit.stamp)){case ALL -> "显示所有展馆";case MISSING -> "只看还有未收集章的展馆，包括未知剪影";case UNSEARCHED -> "只看还没有检索脚印的展馆";};
             case "inspection" -> journal.entry(hit.venue).searched()?"已检索，仍有章位未确认 · 点击查看":"章位尚未检索 · 点击查看";
             case "complete" -> "已知章已集齐 · 点击查看";
@@ -426,9 +431,37 @@ public final class TravelGuideScreen extends Screen {
         if(moved||e.button()!=0||target==null||!target.equals(hit(e.x(),e.y())))return true;
         activate(target);return true;
     }
+    public double[] stickerButtonCenter(){return new double[]{dx()+dw()/2.0,dy()+dh()-43};}
+    private void prepareSticker(UUID id) {
+        if(preparingSticker)return;
+        var tile=tile(id);var venue=tile.venue;int size=tile.size,side=size+48,generation=previewGeneration;preparingSticker=true;
+        try {
+            java.awt.image.BufferedImage icon=null;
+            var resource=minecraft.getResourceManager().getResource(Identifier.parse(venue.icon()));
+            if(resource.isPresent())try(var stream=resource.get().open()){icon=javax.imageio.ImageIO.read(stream);if(icon==null)throw new java.io.IOException("无法读取展馆图片");}
+            String name=font.plainSubstrByWidth(venue.name(),size+10);if(!name.equals(venue.name()))name=font.plainSubstrByWidth(venue.name(),size+1)+"…";
+            var text=new ArrayList<dev.postmark.render.NativeTextCapture.Run>();
+            text.add(new dev.postmark.render.NativeTextCapture.Run(name,20+(size-font.width(name))/2,20+size+9,INK));
+            if(icon==null)text.add(new dev.postmark.render.NativeTextCapture.Run("?",20+size/2-font.width("?")/2,20+size/2-4,0xFF94977B));
+            var base=icon;
+            // GPU completion can run between GUI extraction and drawing. Switch screens on a tick
+            // so removed() cannot release textures still referenced by the current frame.
+            dev.postmark.render.NativeTextCapture.request(side,text).whenComplete((caption,failure)->readySticker=()->{
+                if(generation!=previewGeneration)return;preparingSticker=false;if(!live||minecraft.screen!=this)return;
+                try {
+                    if(failure!=null)throw new java.io.IOException("贴纸文字读取失败",failure);
+                    var image=dev.postmark.render.VenueStickerPainter.paint(base,caption,size,tile.variant);
+                    String asset=session.store().putImage(image);
+                    PostcardScreen desk=parent instanceof PostcardScreen existing?existing:new PostcardScreen(parent,session,null);
+                    minecraft.setScreen(desk);desk.pickUpVenueSticker(id,venue.name(),asset,tile.angle);
+                }catch(Exception e){error="展馆贴纸生成失败，明信片已保留";Postmark.LOGGER.warn("Cannot create venue sticker",e);}
+            });
+        }catch(Exception e){preparingSticker=false;error="展馆贴纸生成失败，明信片已保留";Postmark.LOGGER.warn("Cannot prepare venue sticker",e);}
+    }
     private void activate(Hit target) {
         switch(target.action) {
             case "close" -> onClose();case "dismiss" -> detail=null;
+            case "sticker" -> prepareSticker(target.venue);
             case "filter" -> selectFilter(GuideFilter.valueOf(target.stamp));
             case "zoomIn" -> {pressed=null;view.zoomAt(bw/2.0,bh/2.0,1.3);}case "zoomOut" -> {pressed=null;view.zoomAt(bw/2.0,bh/2.0,1/1.3);}
             case "fit" -> {pressed=null;view.fit(false);}case "desk" -> PostcardScreen.show(this,null);
@@ -448,8 +481,8 @@ public final class TravelGuideScreen extends Screen {
         return true;
     }
     @Override public boolean keyPressed(KeyEvent e) {if(e.key()==256){onClose();return true;}return super.keyPressed(e);}
-    @Override public void tick() {sync();}
+    @Override public void tick() {if(readySticker!=null){var action=readySticker;readySticker=null;action.run();if(minecraft.screen!=this)return;}sync();}
     @Override public void onClose() {if(detail!=null){detail=null;return;}minecraft.setScreen(parent);}
-    @Override public void removed() {try{session.flushGuideReveals();}catch(Exception e){Postmark.LOGGER.warn("Cannot save guide unlocks",e);}live=false;if(cameraReady&&!venues.isEmpty())try{session.saveGuideView(filter==GuideFilter.ALL&&query.isEmpty() || unfilteredView==null?view.bookmark():unfilteredView);}catch(Exception e){Postmark.LOGGER.warn("Cannot save travel guide view",e);}previewGeneration++;if(markers!=null){minecraft.getTextureManager().release(markers);markers=null;}if(patterns!=null){minecraft.getTextureManager().release(patterns);patterns=null;}icons.clear();for(var id:art.values())minecraft.getTextureManager().release(id);art.clear();pending.clear();}
+    @Override public void removed() {try{session.flushGuideReveals();}catch(Exception e){Postmark.LOGGER.warn("Cannot save guide unlocks",e);}live=false;preparingSticker=false;readySticker=null;if(cameraReady&&!venues.isEmpty())try{session.saveGuideView(filter==GuideFilter.ALL&&query.isEmpty() || unfilteredView==null?view.bookmark():unfilteredView);}catch(Exception e){Postmark.LOGGER.warn("Cannot save travel guide view",e);}previewGeneration++;if(markers!=null){minecraft.getTextureManager().release(markers);markers=null;}if(patterns!=null){minecraft.getTextureManager().release(patterns);patterns=null;}icons.clear();for(var id:art.values())minecraft.getTextureManager().release(id);art.clear();pending.clear();}
     @Override public boolean isPauseScreen() {return false;}
 }

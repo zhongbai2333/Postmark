@@ -28,7 +28,7 @@ public final class Postmark {
         NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGH,dev.postmark.client.GuideEntry::screenMouseReleased);
         NeoForge.EVENT_BUS.addListener(dev.postmark.compat.GuideBridge::chunkLoaded);
         NeoForge.EVENT_BUS.addListener(dev.postmark.compat.GuideBridge::chunkUnloaded);
-        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderFrameEvent.Post event) -> dev.postmark.render.ItemStampCapture.afterFrame());
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderFrameEvent.Post event) -> {dev.postmark.render.ItemStampCapture.afterFrame();dev.postmark.render.NativeTextCapture.afterFrame();});
     }
     private void registerKeys(RegisterKeyMappingsEvent event) {
         open=new KeyMapping("key.postmark.open",GLFW.GLFW_KEY_P,KeyMapping.Category.MISC);

@@ -37,7 +37,7 @@ public final class PostcardScreen extends Screen {
     private dev.postmark.render.StampRaster.Layer landingLayer;
     private LandingKey landingKey;
     private record LandingKey(String asset,int width,int height,double x,double y,double size,double angle) {}
-    private StampDefinition tool;
+    private StampDefinition tool,venueSticker;
     private boolean erasing, dragging, clickHeld;
     private double pickupX,pickupY;
     private double toolSize=STAMP_SIZE, resizeX, resizeY, resizeSize, cursorOffsetX, cursorOffsetY;
@@ -260,6 +260,10 @@ public final class PostcardScreen extends Screen {
         }
         collectionTag.layout(width,height);collectionTag.render(g,mouseX,mouseY);
         for(var r:returning) { double t=ease((now()-r.start)/(double)r.duration);
+            if(isVenueSticker(r.stamp)) {
+                double tx=GuideEntry.deskX(width),ty=GuideEntry.deskY(height);
+                drawTool(g,r.stamp,r.x+(tx-r.x)*t,r.y+(ty-r.y)*t-Math.sin(Math.PI*t)*18,r.angle*(1-t),(int)(r.size*cardW*(1-t)+24*t),1,(float)(1-t));continue;
+            }
             if(isTicket(r.stamp)) {
                 double tx=collectionTag.anchorX(),ty=collectionTag.anchorY();
                 drawTool(g,r.stamp,r.x+(tx-r.x)*t,r.y+(ty-r.y)*t-Math.sin(Math.PI*t)*18,r.angle*(1-t),(int)(r.size*cardW*(1-t)+30*t),1,(float)(1-t*.7));
@@ -301,7 +305,7 @@ public final class PostcardScreen extends Screen {
         DeskControls.draw(g,DeskControls.Kind.FOLDER,(int)(cardX+cardW+32),(int)(cardY+cardH-54),true);
         DeskControls.draw(g,DeskControls.Kind.CLOSE,width-22,22,true);
         GuideEntry.draw(g,GuideEntry.deskX(width),GuideEntry.deskY(height),GuideEntry.hit(mouseX,mouseY,width,height));
-        if(hover.isEmpty() && overCard(mouseX,mouseY)) hover=dragging?(isTicket(tool)?"左键放下纪念票 · 右键拖动调大小 · 滚轮旋转":"左键盖印 · 右键拖动调大小 · 滚轮旋转"):erasing?"点击擦除最上层印迹":"拖入 PNG/JPG 更换底片";
+        if(hover.isEmpty() && overCard(mouseX,mouseY)) hover=dragging?((isTicket(tool)||isVenueSticker(tool))?"左键贴上纸片 · 右键拖动调大小 · 滚轮旋转":"左键盖印 · 右键拖动调大小 · 滚轮旋转"):erasing?"点击擦除最上层印迹":"拖入 PNG/JPG 更换底片";
         String tagHint=collectionTag.hint(mouseX,mouseY);if(!tagHint.isEmpty() && !dragging && !erasing) hover=tagHint;
         if(bookHit(mouseX,mouseY)) hover="打开收集册，翻阅或删除明信片";
         if(GuideEntry.hit(mouseX,mouseY,width,height))hover="展开漫游志";
@@ -333,6 +337,13 @@ public final class PostcardScreen extends Screen {
     }
     public StampBag stampBag() { return bag; }
     public CollectionTag collectionTag() { return collectionTag; }
+    private static boolean isVenueSticker(StampDefinition stamp){return stamp!=null&&stamp.key().startsWith("postmark:venue/");}
+    public void pickUpVenueSticker(UUID venue,String name,String asset,double tilt) {
+        venueSticker=new StampDefinition("postmark:venue/"+venue,name,asset,true);
+        takeFromBag(venueSticker);bagPickup=false;clickHeld=true;toolSize=.34;angle=tilt;
+        toolX=minecraft.mouseHandler.getScaledXPos(minecraft.getWindow());toolY=minecraft.mouseHandler.getScaledYPos(minecraft.getWindow());
+        previewTimer.reset(toolX,toolY,angle,now());
+    }
     private static boolean isTicket(StampDefinition stamp) { return stamp.key().startsWith("postmark:milestone/"); }
     private void takeMilestoneTicket(int milestone) {
         if(!collectionTag.progress().unlocks(milestone)) return;
@@ -376,7 +387,7 @@ public final class PostcardScreen extends Screen {
         return "·";
     }
     private void revealShelfStamp(StampDefinition stamp) {
-        if(isTicket(stamp)) return;
+        if(isTicket(stamp)||isVenueSticker(stamp)) return;
         updateShelfBounds();
         int index=0;
         for(int i=0;i<session.album().stamps().size();i++) if(session.album().stamps().get(i).key().equals(stamp.key())) { index=i;break; }
@@ -410,7 +421,7 @@ public final class PostcardScreen extends Screen {
         drawTool(g,stamp,x,y,angle,size,press,1f);
     }
     private void drawTool(GuiGraphicsExtractor g,StampDefinition stamp,double x,double y,double angle,int size,double press,float opacity) {
-        if(isTicket(stamp)) {
+        if(isTicket(stamp)||isVenueSticker(stamp)) {
             g.pose().pushMatrix();g.pose().translate((float)x,(float)y);g.pose().rotate((float)angle);
             try { blitAlpha(g,texture(stamp.asset()),-size/2,-size/2-(int)(4*(1-press)),size,size,opacity); } catch(IOException ignored) {}
             g.pose().popMatrix();return;
@@ -648,6 +659,7 @@ public final class PostcardScreen extends Screen {
     }
     private boolean requestedSelected;
     private boolean available(StampDefinition stamp) {
+        if(isVenueSticker(stamp))return stamp.equals(venueSticker);
         if(isTicket(stamp)) {
             try{return dev.postmark.model.CollectionProgress.from(session.album().stamps()).unlocks(Integer.parseInt(stamp.key().substring("postmark:milestone/".length())));}
             catch(NumberFormatException e){return false;}

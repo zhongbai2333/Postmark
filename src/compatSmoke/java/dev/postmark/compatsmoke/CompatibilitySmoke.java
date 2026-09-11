@@ -68,7 +68,7 @@ public final class CompatibilitySmoke {
         if(!map.item().toString().equals(item))throw new AssertionError("SMU map has wrong artwork after counter click: "+map.item());
     }
     @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
-        if(!Boolean.getBoolean("postmark.compatSmoke") || Boolean.getBoolean("postmark.guideSmoke")) return;
+        if(!Boolean.getBoolean("postmark.compatSmoke") || Boolean.getBoolean("postmark.guideSmoke") || Boolean.getBoolean("postmark.venueStickerSmoke")) return;
         var mc=Minecraft.getInstance(); ticks++;
         try {
             if(mc.screen instanceof PostcardScreen screen && (stage==8 || stage==9 || stage==13)) {
