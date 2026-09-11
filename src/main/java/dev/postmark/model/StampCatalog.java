@@ -8,12 +8,19 @@ import java.util.*;
 /** Community expectations are read-only hints, never discoveries or ownership. */
 public final class StampCatalog {
     public enum Presence { PRESENT, ABSENT, UNKNOWN }
-    public record Entry(UUID venue,int sourceRow,String name,Presence visitor,Presence expert,boolean confirmed) {
-        public Entry { Objects.requireNonNull(visitor);Objects.requireNonNull(expert); }
+    public record ExpectedStamp(String id,String item) {}
+    public record Entry(UUID venue,int sourceRow,String name,Presence visitor,Presence expert,boolean confirmed,List<ExpectedStamp> artworks) {
+        public Entry(UUID venue,int sourceRow,String name,Presence visitor,Presence expert,boolean confirmed) {this(venue,sourceRow,name,visitor,expert,confirmed,List.of());}
+        public Entry { Objects.requireNonNull(visitor);Objects.requireNonNull(expert);artworks=List.copyOf(artworks); }
         public List<TravelJournal.KnownStamp> merge(List<TravelJournal.KnownStamp> observed) {
             var result=new LinkedHashMap<String,TravelJournal.KnownStamp>();
             if(visitor==Presence.PRESENT)result.put("visitor",new TravelJournal.KnownStamp("visitor",null,null,false));
             if(expert==Presence.PRESENT)result.put("expert",new TravelJournal.KnownStamp("expert",null,null,false));
+            for(var expected:artworks) {
+                result.remove(expected.id());
+                var placeholder=new TravelJournal.KnownStamp(expected.id(),null,null,false,expected.item());
+                result.put(placeholder.identity(),placeholder);
+            }
             for(var stamp:observed)putObserved(result,stamp);
             return List.copyOf(result.values());
         }
@@ -33,7 +40,9 @@ public final class StampCatalog {
     }
     private final Map<UUID,Entry> entries;
     private final String date;
-    private StampCatalog(String date,Map<UUID,Entry> entries) {this.date=date;this.entries=Map.copyOf(entries);}
+    private final Map<UUID,List<String>> mods;
+    private StampCatalog(String date,Map<UUID,Entry> entries,Map<UUID,List<String>> mods) {this.date=date;this.entries=Map.copyOf(entries);this.mods=Map.copyOf(mods);}
+    public List<String> mods(UUID venue){return mods.getOrDefault(venue,List.of());}
     public Entry entry(UUID venue) {return entries.get(venue);}
     public int size() {return entries.size();}
     public String date() {return date;}
@@ -73,6 +82,7 @@ public final class StampCatalog {
         if(!searched)return true;
         var entry=entry(venue);
         if(areaSearched && (entry==null || !entry.confirmed()))return false;
+        if(merge(venue,observed,areaSearched).stream().anyMatch(s->s.expectedItem()!=null && s.item()==null && !s.owned()))return true;
         for(String id:List.of("visitor","expert")) {
             if(observed.stream().anyMatch(s->s.id().equals(id)))continue;
             Presence expected=entry==null?Presence.UNKNOWN:id.equals("visitor")?entry.visitor():entry.expert();
@@ -91,15 +101,20 @@ public final class StampCatalog {
     public static StampCatalog read(Reader reader) {
         var root=JsonParser.parseReader(reader).getAsJsonObject();
         if(root.get("version").getAsInt()!=1)throw new IllegalArgumentException("Unsupported stamp catalog");
-        var result=new HashMap<UUID,Entry>();
+        var result=new HashMap<UUID,Entry>();var mods=new HashMap<UUID,List<String>>();
         for(var value:root.getAsJsonArray("entries")) {
             var row=value.getAsJsonObject();
             if(!row.has("venue"))continue; // Retain ambiguous source rows without assigning them to a gallery.
             var id=UUID.fromString(row.get("venue").getAsString());
+            var names=new ArrayList<String>();if(row.has("mods"))for(var mod:row.getAsJsonArray("mods"))names.add(mod.getAsString());mods.put(id,List.copyOf(names));
+            var artworks=new ArrayList<ExpectedStamp>();
+            if(row.has("confirmedArtworks"))for(var artwork:row.getAsJsonArray("confirmedArtworks")) {
+                var a=artwork.getAsJsonObject();artworks.add(new ExpectedStamp(a.get("id").getAsString(),a.get("item").getAsString()));
+            }
             var entry=new Entry(id,row.get("sourceRow").getAsInt(),row.get("name").getAsString(),
-                    Presence.valueOf(row.get("visitor").getAsString()),Presence.valueOf(row.get("expert").getAsString()),row.has("confirmedByExport"));
+                    Presence.valueOf(row.get("visitor").getAsString()),Presence.valueOf(row.get("expert").getAsString()),row.has("confirmedByExport"),artworks);
             if(result.put(id,entry)!=null)throw new IllegalArgumentException("Duplicate catalog venue: "+id);
         }
-        return new StampCatalog(root.get("date").getAsString(),result);
+        return new StampCatalog(root.get("date").getAsString(),result,mods);
     }
 }

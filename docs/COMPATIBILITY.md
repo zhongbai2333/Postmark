@@ -10,7 +10,7 @@
 
 SMU 的 `ExhibitionStamp` 包含 `id`、`item`、`location`、`rotate`，不规定圆章形状。`item` 若为注册物品，按原生 GUI 物品模型捕获；否则直接读取资源 PNG。编辑器的 `stamp_handle_rect.png` 是操作手柄，不是章面。
 
-物品捕获使用 Minecraft `GuiItemAtlas`，边长为 `16 × GUI 缩放倍率`，GUI 2 时为 32 像素；放大采用最近邻采样，保留模型、颜色与透明度。动态图标保存捕获时单帧。超出标准 GUI 单元的特殊模型会提示不支持，不生成被裁切的替代章面。
+物品捕获使用 Minecraft `GuiItemAtlas`，边长为 `16 × GUI 缩放倍率`，GUI 2 时为 32 像素；放大采用最近邻采样，保留模型、颜色与透明度。动态图标保存捕获时单帧。超出标准 GUI 单元的模型按 GUI 变换后的包围盒扩展捕获画布并居中，留一像素透明边，最大 2048 像素；普通模型沿用原画布和采样。
 
 展区名称来自 `Exhibition.metadata().name()`，服务器默认未设置值为 `@unset`。Postmark 从客户端 `GALLERY_LOOKUP` 读取，仅归档玩家已拥有的章。旧收藏在正常同步后补全名称，元数据改名时刷新本地名称并保留顺序；离线仍可使用已保存的名称。
 
@@ -50,3 +50,13 @@ SMU 的 `ExhibitionStamp` 包含 `id`、`item`、`location`、`rotate`，不规�
 SMU 1.1.12 的 `ExhibitionFootprint.withStamp` 按 id 替换服务器记录。Postmark 为不同 item 创建独立本地收藏身份，只要该服务器章位仍存在，就保留在这个客户端领过的其他图案；该章位被清空或撤销时，同时撤销它的全部本地图案。地图协议仍沿用 SMU 的单章位记录。
 
 旧版 ID-only 收藏只有在已保存章面与当前捕获结果匹配时才迁移；不将一枚旧收藏视为所有同 ID 图案都已获得。已覆盖且无本地记录的图案无法从服务器最后一枚记录反推，需要再次领取。明信片保留原印迹身份和图片，不随收藏迁移重写。
+
+## 0.1.4 补充
+
+- 锻星砧官方物品定义带有 `oversized_in_gui: true`。旧捕获器明确拒绝这类模型，导致服务器记录存在但本地图片收录失败；现在完整捕获原模型，不使用替代图案。失败提示会保留在盖章台打开的明信片界面底部。
+- 点击已由服务器确认的同一章面，允许在相同图库快照下重试捕获；仍严格匹配展馆、章 ID 和 item，不从扫描授章。
+- `CounterRenderStateMixin` / `CounterRendererMixin` 是可选 SMU mixin。提取阶段把精确收藏状态放入渲染状态；绘制阶段使用完整勾纹理，不读服务器、不扫描区块。重复放置共享状态，清空章位时所有副本撤销。
+- Shift 获取只抑制客户端界面，保留原服务器盖章交互和自动地图定位。新收藏的待展示身份保存于每玩家/服务器作用域的 `stamp-inbox.json`，不授予章，重复 item 不重复入队。明信片批量演出完成后才确认消费，提前关闭会保留未播完的一批。
+- 漫游志点亮完成记录存于 `guide-reveals.json`，与静默入袋队列分开；只对当前可见且图案已加载的章逐枚播放。撤销收藏会移除两种演出记录中的对应身份，之后可重新领取、播放。
+
+模型测试使用 Anvil-Dev/AnvilCraft 提交 `4111a03b01ab694aafbd542dc065cba76f5d0e98` 的原始物品定义、模型、纹理，在 vanilla item 别名下装入测试资源；没有加载完整铁砧工艺 Mod。准备：`python3 scripts/prepare-anvil-smoke.py`；运行：`./gradlew runClient -PcompatSmoke -PanvilStampSmoke`。本地测试资源与 SMU 夹具不进入安装包或源码包。

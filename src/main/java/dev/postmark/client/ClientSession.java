@@ -14,6 +14,30 @@ public final class ClientSession {
     private final AlbumStore store;
     private Album album;
     private TravelJournal journal;
+    private java.util.Set<String> guideReveals;
+    private boolean revealsDirty;
+    private java.util.List<String> stampInbox;
+    public java.util.List<String> stampInbox() throws IOException {
+        if(stampInbox==null)stampInbox=new dev.postmark.storage.StampInboxStore(store.directory()).load();
+        return stampInbox;
+    }
+    public void enqueueStamps(java.util.Collection<String> keys) throws IOException {
+        var next=new java.util.LinkedHashSet<>(stampInbox());next.addAll(keys);saveInbox(next);
+    }
+    public void consumeStamps(java.util.Collection<String> keys) throws IOException {
+        var next=new java.util.LinkedHashSet<>(stampInbox());next.removeAll(keys);saveInbox(next);
+    }
+    private void saveInbox(java.util.Collection<String> keys) throws IOException {
+        var owned=new java.util.HashSet<String>();for(var s:album.stamps())if(!s.practice())owned.add(s.key());
+        var next=keys.stream().filter(owned::contains).distinct().toList();if(next.equals(stampInbox))return;
+        new dev.postmark.storage.StampInboxStore(store.directory()).save(next);stampInbox=next;
+    }
+    public java.util.Set<String> guideReveals() throws IOException {
+        if(guideReveals==null)guideReveals=new java.util.HashSet<>(new dev.postmark.storage.GuideRevealsStore(store.directory()).load());
+        return java.util.Set.copyOf(guideReveals);
+    }
+    public void revealGuideStamps(java.util.Collection<String> keys) throws IOException {guideReveals();if(guideReveals.addAll(keys))revealsDirty=true;}
+    public void flushGuideReveals() throws IOException {if(revealsDirty){new dev.postmark.storage.GuideRevealsStore(store.directory()).save(guideReveals);revealsDirty=false;}}
     private ClientSession(String scope, AlbumStore store) throws IOException {
         this.scope = scope; this.store = store; album = store.load();
         // Retire only the two built-in shelf entries. Existing imprints and their assets remain intact.
@@ -55,5 +79,10 @@ public final class ClientSession {
     public void update(Album next) throws IOException {
         store.save(next); // Commit the in-memory state only after the atomic save succeeds.
         album = next;
+        try {
+            guideReveals();var keys=new java.util.HashSet<String>();for(var stamp:next.stamps())keys.add(stamp.key());
+            if(guideReveals.retainAll(keys)){revealsDirty=true;flushGuideReveals();}
+            saveInbox(stampInbox());
+        } catch(IOException e){dev.postmark.Postmark.LOGGER.warn("Cannot update guide reveal history",e);}
     }
 }

@@ -53,7 +53,10 @@ public final class PostcardScreen extends Screen {
     private boolean bagPickup;
     private double cardX, cardY, cardW, cardH;
     private String status="";
-    private long statusAt,lastCollectionSound;
+    private long statusAt;
+    private final StampAcquisition acquisition;
+    private StampAcquisitionAnimation acquisitionAnimation;
+    private StampInboxAnimation inboxAnimation;
     private PendingStamp pressing;
     private long sendAt;
     private long flyAt;
@@ -68,6 +71,7 @@ public final class PostcardScreen extends Screen {
     public PostcardScreen(Screen parent, ClientSession session, String requested) {
         super(Component.translatable("screen.postmark.title"));
         this.parent=parent; this.session=session; this.requested=requested;
+        this.acquisition=new StampAcquisition(requested,session.album().stamps());
         if (!session.album().stamps().isEmpty()) tool=session.album().stamps().getFirst();
     }
     public static void show(Screen parent,String requested) {
@@ -307,8 +311,12 @@ public final class PostcardScreen extends Screen {
         if(DeskControls.hit(mouseX,mouseY,width-22,22)) hover="收起明信片 · Esc";
         boolean recent=!status.isEmpty() && now()-statusAt<4500;
         if(recent && mouseY>=height-26 && Math.abs(mouseX-width/2)<120) hover=status;
-        if(!bag.isOpen() && !busy()) HoverHint.draw(g,font,hover.isEmpty() && recent?shortStatus():hover,width,height);
+        String bridgeNotice=SignMeUpBridge.notice();
+        boolean captureProblem=requested!=null && (bridgeNotice.contains("失败") || bridgeNotice.contains("超时"));
+        if(!bag.isOpen() && !busy()) HoverHint.draw(g,font,captureProblem?bridgeNotice:hover.isEmpty() && recent?shortStatus():hover,width,height);
         if(bag!=null && bag.isOpen()) { bag.layout(width,height);bag.render(g,mouseX,mouseY,partialTick,session.album().stamps()); }
+        if(inboxAnimation!=null) inboxAnimation.render(g,font,this::drawTool,width,height,32,bagOffset()+12,now());
+        if(acquisitionAnimation!=null) acquisitionAnimation.render(g,font,this::drawTool,width,height,32,bagOffset()+12,now());
     }
     private boolean bookHit(double x,double y) { return Math.abs(x-(cardX+cardW+34))<=27 && Math.abs(y-(cardY-26))<=28; }
     public void pickUpCollected(String key) {
@@ -580,8 +588,29 @@ public final class PostcardScreen extends Screen {
         if(tool!=null && !available(tool)){tool=null;dragging=false;clickHeld=false;resizing=false;bagPickup=false;}
         if(pressing!=null && !available(pressing.stamp))pressing=null;
         returning.removeIf(r->!available(r.stamp));
-        if(collectionTag!=null && collectionTag.sync(session.album().stamps()) && now()-lastCollectionSound>=220) {
-            lastCollectionSound=now();minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(),1.6f,.2f));
+        if(collectionTag!=null) collectionTag.sync(session.album().stamps());
+        var fresh=acquisition.poll(session.album().stamps());
+        try {
+            if(fresh!=null){if(inboxAnimation!=null||!session.stampInbox().isEmpty())session.enqueueStamps(List.of(fresh.key()));else acquisitionAnimation=new StampAcquisitionAnimation(fresh,now());}
+            if(inboxAnimation!=null){
+                if(inboxAnimation.stamps().stream().anyMatch(s->!available(s)))inboxAnimation=null;
+                else if(inboxAnimation.finished(now())){session.consumeStamps(inboxAnimation.stamps().stream().map(StampDefinition::key).toList());inboxAnimation=null;}
+            }
+            if(inboxAnimation==null && acquisitionAnimation==null && !session.stampInbox().isEmpty()) {
+                var byKey=new HashMap<String,StampDefinition>();for(var s:session.album().stamps())byKey.put(s.key(),s);
+                var queued=session.stampInbox().stream().map(byKey::get).filter(Objects::nonNull).toList();
+                if(!queued.isEmpty()){inboxAnimation=new StampInboxAnimation(queued,now());minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.EXPERIENCE_ORB_PICKUP,1.2f,.4f));}
+            }
+        }catch(IOException e){fail(e);}
+        if(acquisitionAnimation!=null) {
+            if(!available(acquisitionAnimation.stamp()) || acquisitionAnimation.finished(now())) acquisitionAnimation=null;
+            else {
+                int cue=acquisitionAnimation.sound(now());
+                if(cue==1) {
+                    minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(),.65f,.55f));
+                    minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.EXPERIENCE_ORB_PICKUP,acquisitionAnimation.stamp().expert()?1.3f:1.05f,.35f));
+                } else if(cue==2) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(),1.7f,.18f));
+            }
         }
         if(cardTurn!=null && now()-cardTurn.start>=560) finishTurn();
         if(pressing!=null) {

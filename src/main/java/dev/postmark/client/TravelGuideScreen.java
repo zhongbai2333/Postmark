@@ -22,7 +22,14 @@ public final class TravelGuideScreen extends Screen {
     private final Map<String,Identifier> art=new LinkedHashMap<>(128,.75f,true);
     private final Set<String> pending=new HashSet<>(),failed=new HashSet<>();
     private TravelJournal journal=TravelJournal.empty();
-    private List<GuideVenue> venues=List.of();
+    private List<GuideVenue> venues=List.of(),shownVenues=List.of();
+    private GuideFilter filter=GuideFilter.ALL;
+    private net.minecraft.client.gui.components.EditBox search;
+    private String query="";
+    private final Map<UUID,List<String>> searchMods=new HashMap<>();
+    private GuideUnlockSequence unlocks;
+    private long revealFlush;
+    private GuideViewport.Bookmark unfilteredView;
     private int detailPage,serial,bx,by,bw,bh;
     private final GuideViewport view=new GuideViewport();
     private GuideCanvasLayout canvas=GuideCanvasLayout.scatter(List.of());
@@ -66,14 +73,22 @@ public final class TravelGuideScreen extends Screen {
         catch(Exception e) {Postmark.LOGGER.warn("Cannot open travel guide",e);}
     }
     private static long now() {return System.nanoTime()/1_000_000;}
-    @Override protected void init() {boolean first=!cameraReady;live=true;opened=now();lastFrame=opened;sync();layout();if(markers==null)markers=registerTexture("markers",dev.postmark.render.GuideMarkerPainter.paint());if(patterns==null)patterns=registerTexture("paper",dev.postmark.render.GuideMarkerPainter.paperPatterns());icons.clear();if(first&&!restoredCamera)view.enter();}
+    @Override protected void init() {
+        if(search==null){
+            search=new net.minecraft.client.gui.components.EditBox(font,0,0,180,16,Component.literal("搜索展馆或 Mod"));
+            search.setMaxLength(100);search.setBordered(false);search.setTextColor(INK);search.setHint(Component.literal("搜索展馆 / Mod"));search.setResponder(this::searchChanged);
+        }
+        addWidget(search);
+        if(unlocks==null)try{unlocks=new GuideUnlockSequence(session.guideReveals());}catch(Exception e){unlocks=new GuideUnlockSequence(Set.of());error="解锁动画记录读取失败，原文件已保留";}
+        boolean first=!cameraReady;live=true;opened=now();lastFrame=opened;sync();layout();if(markers==null)markers=registerTexture("markers",dev.postmark.render.GuideMarkerPainter.paint());if(patterns==null)patterns=registerTexture("paper",dev.postmark.render.GuideMarkerPainter.paperPatterns());icons.clear();if(first&&!restoredCamera)view.enter();}
     private void layout() {
-        bx=16;by=55;bw=Math.max(180,width-72);bh=Math.max(100,height-83);
-        if(arrangedVenues!=venues) {
-            var ids=venues.stream().map(GuideVenue::id).toList();
+        bx=16;by=width<420?103:79;bw=Math.max(180,width-72);bh=Math.max(100,height-by-28);
+        if(search!=null){search.setX(width<420?22:244);search.setY(width<420?81:55);search.setWidth(width<420?Math.max(100,width-100):Math.max(90,width-322));}
+        if(arrangedVenues!=shownVenues) {
+            var ids=shownVenues.stream().map(GuideVenue::id).toList();
             if(!ids.equals(layoutIds)){layoutIds=ids;canvas=GuideCanvasLayout.scatter(ids);}
-            var tiles=new ArrayList<Tile>();for(var n:canvas.nodes())tiles.add(new Tile(venues.get(n.index()),n.x(),n.y(),n.size(),n.variant(),n.angle()));canvasTiles=List.copyOf(tiles);
-            arrangedVenues=venues;
+            var tiles=new ArrayList<Tile>();for(var n:canvas.nodes())tiles.add(new Tile(shownVenues.get(n.index()),n.x(),n.y(),n.size(),n.variant(),n.angle()));canvasTiles=List.copyOf(tiles);
+            arrangedVenues=shownVenues;
         }
         view.resize(bw,bh,canvas.width(),canvas.height(),!cameraReady);
         if(!cameraReady&&!venues.isEmpty()) {
@@ -102,6 +117,30 @@ public final class TravelGuideScreen extends Screen {
             }
             stateJournal=journal;stateOwned=owned;stateVenues=venues;
         }
+        var selected=venues.stream().filter(v->{var state=states.get(v.id());return filter.includes(state.searched,state.stamps)&&GuideSearch.matches(v,modNames(v.id()),query);}).toList();
+        if(!selected.equals(shownVenues))shownVenues=selected;
+        if(unlocks!=null)unlocks.sync(owned.stream().filter(s->!s.practice()).map(StampDefinition::key).toList());
+    }
+    private List<String> modNames(UUID id){return searchMods.computeIfAbsent(id,key->{
+        var names=new ArrayList<String>(StampCatalog.bundled().mods(key));
+        for(String mod:List.copyOf(names))net.neoforged.fml.ModList.get().getModContainerById(mod).ifPresent(container->names.add(container.getModInfo().getDisplayName()));
+        return List.copyOf(names);
+    });}
+    private void searchChanged(String value){
+        if(query.equals(value))return;
+        if(query.isEmpty()&&filter==GuideFilter.ALL&&cameraReady)unfilteredView=view.bookmark();
+        query=value;hovering=null;enlargement.clear();sync();layout();
+        if(query.isEmpty()&&filter==GuideFilter.ALL&&unfilteredView!=null)view.restore(unfilteredView);else view.fit(false);
+    }
+    public void searchFor(String value){search.setValue(value);}
+    public double unlockAmount(UUID venue,TravelJournal.KnownStamp stamp){return unlocks==null?1:unlocks.amount(venue+"/"+stamp.identity(),now());}
+    public GuideFilter filter(){return filter;}
+    public double[] filterCenter(GuideFilter value){return new double[]{16+value.ordinal()*72+33,60};}
+    private void selectFilter(GuideFilter next) {
+        if(next==filter)return;
+        if(filter==GuideFilter.ALL&&query.isEmpty())unfilteredView=view.bookmark();
+        filter=next;hovering=null;enlargement.clear();pressed=null;sync();layout();
+        if(next==GuideFilter.ALL && query.isEmpty() && unfilteredView!=null)view.restore(unfilteredView);else view.fit(false);
     }
     public UUID detailVenue() {return detail;}
     public int canvasVenueCount(){return canvasTiles.size();}
@@ -164,6 +203,14 @@ public final class TravelGuideScreen extends Screen {
         tape(g,12,y-3,24,0xC0B1BD9B);tape(g,121,y+23,24,0xC0B1BD9B);
         g.pose().pushMatrix();g.pose().translate(28,y+6);g.pose().scale(2,2);g.text(font,Component.literal("漫游志"),0,0,INK,false);g.pose().popMatrix();
         g.text(font,Component.literal("走走 · 逛逛 · 盖盖章"),159,y+13,0xFFE8DFBE,false);
+        for(var choice:GuideFilter.values()) {
+            int fx=16+choice.ordinal()*72;boolean selected=choice==filter;
+            g.fill(fx+2,52,fx+68,72,0x50382F20);g.fill(fx,50,fx+66,70,selected?0xFF587653:0xFFE9DAB5);
+            g.centeredText(font,Component.literal(choice.label()),fx+33,56,selected?0xFFFFF2D1:INK);
+            if(selected)g.fill(fx+8,68,fx+58,70,0xFFC7D4A0);
+        }
+        g.fill(search.getX()-6,search.getY()-5,search.getX()+search.getWidth()+6,search.getY()+15,0xFFE9DAB5);
+        g.fill(search.getX()-4,search.getY()+13,search.getX()+search.getWidth()+4,search.getY()+14,0xFF9A906E);
         int x=width-28;
         g.fill(x-13,15,x+13,41,0xFFAD7859);DeskControls.draw(g,DeskControls.Kind.CLOSE,x,28,true);
         if(fromInventory())drawStampEntry(g,x,by+19);
@@ -222,24 +269,40 @@ public final class TravelGuideScreen extends Screen {
         }));
         return art.get(key);
     }
-    private void stampPicture(GuiGraphicsExtractor g,TravelJournal.KnownStamp stamp,int cx,int cy,int size) {
+    private void stampPicture(GuiGraphicsExtractor g,TravelJournal.KnownStamp stamp,int cx,int cy,int size,UUID venue) {
+        double reveal=stamp.owned()?unlockAmount(venue,stamp):1;
+        boolean lit=stamp.owned()&&reveal>0;
+        double pulse=reveal>0&&reveal<1?Math.sin(reveal*Math.PI):0;
         var texture=artwork(stamp,detail!=null||view.zoom()>=.55||stamp==stamp(hovering,"visitor")||stamp==stamp(hovering,"expert"));float scale=size/64f;
-        g.pose().pushMatrix();g.pose().translate(cx,cy);g.pose().scale(scale,scale);
+        g.pose().pushMatrix();g.pose().translate(cx,cy);g.pose().scale((float)(scale*(1+pulse*.3)),(float)(scale*(1+pulse*.3)));
         if(texture!=null) {
-            int tint=(stamp.owned()?0xFF000000:0x66000000)|0xFFFFFF;
+            int tint=((lit?(int)(102+153*reveal):102)<<24)|0xFFFFFF;
             g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,texture,-40,-64,0f,0f,80,104,1,1,1,1,tint);
         }else {
-            int color=stamp.id().equals("expert")?0xFFB8944A:0xFF8A684B;if(!stamp.owned())color=(color&0xFFFFFF)|0x66000000;
+            int color=stamp.id().equals("expert")?0xFFB8944A:0xFF8A684B;if(!lit)color=(color&0xFFFFFF)|0x66000000;
             g.fill(-31,-24,31,28,color);g.fill(-8,-42,8,-24,color);g.fill(-17,-58,17,-41,color);
             if(stamp.asset()==null && stamp.item()==null) {
                 g.pose().pushMatrix();g.pose().scale(3,3);g.centeredText(font,Component.literal("?"),0,-3,0xFF8C8063);g.pose().popMatrix();
             }
         }
+        if(pulse>0){int color=((int)(220*pulse)<<24)|0xE9C979;g.outline(-43,-66,86,108,color);for(int i=0;i<4;i++){int sx=i%2==0?-49:47,sy=i<2?-55:25;g.fill(sx-3,sy-1,sx+4,sy+2,color);g.fill(sx-1,sy-3,sx+2,sy+4,color);}}
         g.pose().popMatrix();
+    }
+    private void advanceUnlocks(long time) {
+        if(unlocks==null)return;
+        var visibleKeys=new ArrayList<String>();
+        if(detail!=null){var stamps=stamps(detail);int start=Math.min(stamps.size(),detailPage*detailCapacity());for(var stamp:stamps.subList(start,Math.min(stamps.size(),start+detailCapacity())))if(stamp.owned()&&artwork(stamp,true)!=null)visibleKeys.add(detail+"/"+stamp.identity());}
+        else for(var tile:paintOrder()) {
+            var state=states.get(tile.venue.id());
+            for(var stamp:new TravelJournal.KnownStamp[]{state.visitor,state.expert})if(stamp!=null&&stamp.owned()&&unlocks.pending(tile.venue.id()+"/"+stamp.identity())&&artwork(stamp,true)!=null)visibleKeys.add(tile.venue.id()+"/"+stamp.identity());
+        }
+        try{session.revealGuideStamps(unlocks.advance(time,visibleKeys));if(time-revealFlush>1000){session.flushGuideReveals();revealFlush=time;}}
+        catch(Exception e){error="解锁动画进度保存失败";}
     }
     @Override public void extractBackground(GuiGraphicsExtractor g,int mx,int my,float t) {if(minecraft.level==null)extractPanorama(g,t);extractBlurredBackground(g);}
     @Override public void extractRenderState(GuiGraphicsExtractor g,int mx,int my,float t) {
         previewBudget=2;layout();long time=now();double dt=(time-lastFrame)/1000.0;lastFrame=time;view.step(dt);
+        advanceUnlocks(time);
         Hit hover=dragging||detail!=null?null:hit(mx,my);hovering=hover==null?null:hover.venue;
         float amount=(float)(1-Math.exp(-Math.clamp(dt,0,.1)/.075));
         for(var tile:tiles()){UUID id=tile.venue.id();float v=enlargement.getOrDefault(id,0f),target=id.equals(hovering)?1:0;enlargement.put(id,v+(target-v)*amount);}
@@ -253,10 +316,10 @@ public final class TravelGuideScreen extends Screen {
             g.pose().pushMatrix();g.pose().translate(cx,cy);g.pose().scale(k,k);g.pose().translate(-cx,-cy);g.pose().rotateAbout(tile.angle,cx,cy);
             scrap(g,tile,hot);
             var state=states.get(tile.venue.id());
-            boolean done=state.complete;
+            boolean done=state.complete && (state.visitor==null||unlockAmount(tile.venue.id(),state.visitor)>=1) && (state.expert==null||unlockAmount(tile.venue.id(),state.expert)>=1);
             if(done){g.outline(tile.x-3,tile.y-3,tile.size+6,tile.size+6,0xFF356647);g.outline(tile.x-4,tile.y-4,tile.size+8,tile.size+8,0xFF356647);}
             if(state.searched)marker(g,0,tile.x+tile.size-12,tile.y+tile.size-16);
-            for(String kind:List.of("visitor","expert")){var s=stamp(tile.venue.id(),kind);if(s!=null)stampPicture(g,s,kind.equals("visitor")?tile.x:tile.x+tile.size,tile.y,24);}
+            for(String kind:List.of("visitor","expert")){var s=stamp(tile.venue.id(),kind);if(s!=null)stampPicture(g,s,kind.equals("visitor")?tile.x:tile.x+tile.size,tile.y,24,tile.venue.id());}
             if(state.inspection)marker(g,1,tile.x+tile.size/2,tile.y-16);
             else if(done)marker(g,2,tile.x+tile.size/2,tile.y-16);
             long extra=state.extra;
@@ -265,7 +328,8 @@ public final class TravelGuideScreen extends Screen {
         }
         g.pose().popMatrix();g.disableScissor();
         if(venues.isEmpty())g.centeredText(font,Component.literal(GuideBridge.available()?"等待展馆目录…":"当前世界没有 SMU 展馆"),bx+bw/2,by+bh/2,0xFF7E8467);
-        chrome(g);
+        if(!venues.isEmpty() && shownVenues.isEmpty())g.centeredText(font,Component.literal(!query.isBlank()?"没有匹配的展馆":filter==GuideFilter.MISSING?"已知章都收集啦！":"展馆都逛过啦！"),bx+bw/2,by+bh/2,0xFF63754F);
+        chrome(g);search.extractRenderState(g,mx,my,t);
         if(detail!=null)drawDetail(g,mx,my);
         String hint=hint(detail!=null?hit(mx,my):hover);if(!error.isEmpty())hint=error;else if(hint.isBlank())hint=GuideBridge.status();
         HoverHint.draw(g,font,hint,width,height);
@@ -287,7 +351,7 @@ public final class TravelGuideScreen extends Screen {
         detailPage=Math.min(detailPage,Math.max(0,(known.size()-1)/detailCapacity()));
         for(int i=0;i<detailCapacity() && detailPage*detailCapacity()+i<known.size();i++) {
             var s=known.get(detailPage*detailCapacity()+i);int cx=x+20+(w-40)*(i%4)/4+(w-40)/8,cy=y+84+(i/4)*52;
-            stampPicture(g,s,cx,cy,24);String label=s.id().equals("visitor")?"普通":s.id().equals("expert")?"大师":s.id();
+            stampPicture(g,s,cx,cy,24,detail);String label=s.id().equals("visitor")?"普通":s.id().equals("expert")?"大师":s.id();
             g.centeredText(font,Component.literal(font.plainSubstrByWidth(label,(w-40)/4-4)),cx,cy+20,s.owned()?INK:0xFF9F967A);
         }
         if(known.isEmpty())g.centeredText(font,Component.literal(areaSearched(detail)?"周边未发现印章":journal.entry(detail).searched()?"尚未发现印章":"等待探索"),x+w/2,y+80,0xFF9B967B);
@@ -307,6 +371,7 @@ public final class TravelGuideScreen extends Screen {
             return null;
         }
         if(DeskControls.hit(x,y,width-28,28))return new Hit("close",null,null);
+        for(var choice:GuideFilter.values())if(x>=16+choice.ordinal()*72 && x<82+choice.ordinal()*72 && y>=50 && y<70)return new Hit("filter",null,choice.name());
         if(fromInventory() && Math.abs(x-(width-28))<=18 && Math.abs(y-(by+19))<=25)return new Hit("desk",null,null);
         if(Math.abs(x-(width-28))<=15){if(Math.abs(y-(height-120))<=15)return new Hit("zoomIn",null,null);if(Math.abs(y-(height-84))<=15)return new Hit("fit",null,null);if(Math.abs(y-(height-48))<=15)return new Hit("zoomOut",null,null);}
         if(!onCanvas(x,y))return null;
@@ -332,6 +397,7 @@ public final class TravelGuideScreen extends Screen {
         return switch(hit.action){
             case "travel" -> venue!=null?(venue.canTeleport()?"前往 "+venue.name():"这个展馆尚未设置传送点"):"";
             case "details" -> "查看展馆介绍";
+            case "filter" -> switch(GuideFilter.valueOf(hit.stamp)){case ALL -> "显示所有展馆";case MISSING -> "只看还有未收集章的展馆，包括未知剪影";case UNSEARCHED -> "只看还没有检索脚印的展馆";};
             case "inspection" -> journal.entry(hit.venue).searched()?"已检索，仍有章位未确认 · 点击查看":"章位尚未检索 · 点击查看";
             case "complete" -> "已知章已集齐 · 点击查看";
             case "footprint" -> "猫猫踩过啦 · 已检索，点击查看";
@@ -343,6 +409,8 @@ public final class TravelGuideScreen extends Screen {
     @Override public boolean mouseClicked(MouseButtonEvent e,boolean twice) {
         dragging=false;panArmed=false;pressed=null;
         if(now()-opened<300)return true;
+        if(detail==null && e.x()>=search.getX()-6 && e.x()<=search.getX()+search.getWidth()+6 && e.y()>=search.getY()-5 && e.y()<=search.getY()+15){setFocused(search);search.mouseClicked(e,twice);return true;}
+        setFocused(null);
         pressX=lastDragX=e.x();pressY=lastDragY=e.y();
         panArmed=detail==null && onCanvas(e.x(),e.y()) && (e.button()==0||e.button()==2);
         if(e.button()==0)pressed=hit(e.x(),e.y());return true;
@@ -361,6 +429,7 @@ public final class TravelGuideScreen extends Screen {
     private void activate(Hit target) {
         switch(target.action) {
             case "close" -> onClose();case "dismiss" -> detail=null;
+            case "filter" -> selectFilter(GuideFilter.valueOf(target.stamp));
             case "zoomIn" -> {pressed=null;view.zoomAt(bw/2.0,bh/2.0,1.3);}case "zoomOut" -> {pressed=null;view.zoomAt(bw/2.0,bh/2.0,1/1.3);}
             case "fit" -> {pressed=null;view.fit(false);}case "desk" -> PostcardScreen.show(this,null);
             case "detailNext" -> detailPage=Math.min(Math.max(0,(stamps(detail).size()-1)/detailCapacity()),detailPage+1);case "detailPrev" -> detailPage=Math.max(0,detailPage-1);
@@ -381,6 +450,6 @@ public final class TravelGuideScreen extends Screen {
     @Override public boolean keyPressed(KeyEvent e) {if(e.key()==256){onClose();return true;}return super.keyPressed(e);}
     @Override public void tick() {sync();}
     @Override public void onClose() {if(detail!=null){detail=null;return;}minecraft.setScreen(parent);}
-    @Override public void removed() {live=false;if(cameraReady&&!venues.isEmpty())try{session.saveGuideView(view.bookmark());}catch(Exception e){Postmark.LOGGER.warn("Cannot save travel guide view",e);}previewGeneration++;if(markers!=null){minecraft.getTextureManager().release(markers);markers=null;}if(patterns!=null){minecraft.getTextureManager().release(patterns);patterns=null;}icons.clear();for(var id:art.values())minecraft.getTextureManager().release(id);art.clear();pending.clear();}
+    @Override public void removed() {try{session.flushGuideReveals();}catch(Exception e){Postmark.LOGGER.warn("Cannot save guide unlocks",e);}live=false;if(cameraReady&&!venues.isEmpty())try{session.saveGuideView(filter==GuideFilter.ALL&&query.isEmpty() || unfilteredView==null?view.bookmark():unfilteredView);}catch(Exception e){Postmark.LOGGER.warn("Cannot save travel guide view",e);}previewGeneration++;if(markers!=null){minecraft.getTextureManager().release(markers);markers=null;}if(patterns!=null){minecraft.getTextureManager().release(patterns);patterns=null;}icons.clear();for(var id:art.values())minecraft.getTextureManager().release(id);art.clear();pending.clear();}
     @Override public boolean isPauseScreen() {return false;}
 }

@@ -19,8 +19,9 @@ public record TravelJournal(int version, List<Entry> entries) {
         }
     }
     public record Discovery(UUID venue,String id,String item) {}
-    public record KnownStamp(String id,String item,String asset,boolean owned) {
-        public String identity() {return StampIdentity.variant(id,item);}
+    public record KnownStamp(String id,String item,String asset,boolean owned,String expectedItem) {
+        public KnownStamp(String id,String item,String asset,boolean owned) {this(id,item,asset,owned,null);}
+        public String identity() {return StampIdentity.variant(id,item==null?expectedItem:item);}
     }
     public TravelJournal {
         if(version!=1) throw new IllegalArgumentException("Unsupported journal version: "+version);

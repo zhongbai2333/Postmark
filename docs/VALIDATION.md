@@ -1,5 +1,16 @@
 # 验证记录
 
+## 0.1.4 本地验证（2026-09-11）
+
+- 88 项单元测试通过：GUI 包围盒完整捕获、113 个预期剪影、同 ID 图案独立完成、重复台子去重、筛选/搜索、按序点亮、持久动画队列。
+- `runClient -PcompatSmoke -PanvilStampSmoke` 通过真实 SMU 1.1.12 盖章台交互：两枚普通及两枚大师图案独立收录、持久化、反复切换地图 item；官方锻星砧模型捕获有完整透明边，成功触发一次新章演出；重复领取不重播。
+- 同一测试验证近/远台面标识、浮标覆盖及 render state、清空撤销；Shift 两次静默获取保持世界画面，重复台子不重复入队；重载 ClientSession 后队列仍为两枚，打开明信片按批播放、完成后消费，重开不重播。
+- Anvil 测试使用固定官方资源在 vanilla item 别名下加载，未加载完整 AnvilCraft Mod；资源来源与复现命令见 COMPATIBILITY.md。玩家实际整合包与正式活动服务器未在本地运行。
+- `runClient -PcompatSmoke -PguideSmoke` 通过：真实鼠标筛选、正确数量、恢复相机；展馆名/关联 Mod ID 搜索、无匹配与清空查询；可见新收藏点亮并持久确认；既有 loaded-chunk 检索、第三枚章补充、预设剪影、GUI 2/3、背包拖动、传送、清空逐枚重收集及导出回归继续通过。
+- `runClient -PsmokeTest -PbookSmoke` 通过：未装 SMU 时可启动，可选 Mixin 不影响收藏册；原八卡布局、选卡、翻页、删除与保存通过。
+- 人工检查游戏截图：`images/stamp-acquisition.png`、`images/stamp-batch-inbox.png`、`images/counter-collected.png`、`images/travel-search-mod.png`。标识初版几何叠层产生碎点，改成一张完整像素纹理后重新游戏验证完整勾形。
+
+
 ## 0.1.2 确认清单、剪影与快速集齐（2026-09-10）
 
 - 最终 `./gradlew build` 通过，66 项单元测试零失败、零跳过；正式 JAR 和源码包不含测试夹具或 SMU 本体，打包资源核对为 74 馆/112 个目标章位，无章面或玩家进度字段。

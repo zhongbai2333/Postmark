@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     id 'net.neoforged.moddev' version '2.0.140'
 }
-version = '0.1.3'
+version = '0.1.4'
 group = 'dev.postmark'
 base { archivesName = 'postmark-26.1.2' }
 java {
@@ -49,9 +49,11 @@ if (project.hasProperty('compatSmoke')) {
     sourceSets.main.java.srcDir 'src/compatSmoke/java'
     sourceSets.main.resources.srcDir 'src/compatSmoke/resources'
     dependencies { implementation files('local/exhibition_portal-1.1.12.jar') }
+    if (project.hasProperty('anvilStampSmoke')) sourceSets.main.resources.srcDir 'local/anvil-stamp-fixture'
     neoForge.runs.client {
         gameDirectory = file('run-compat-smoke')
         systemProperty 'postmark.compatSmoke', 'true'
+        if (project.hasProperty('anvilStampSmoke')) systemProperty 'postmark.anvilStampSmoke', 'true'
         if (project.hasProperty('guideSmoke')) systemProperty 'postmark.guideSmoke', 'true'
         programArgument '--width'
         programArgument '1440'
@@ -62,6 +64,7 @@ if (project.hasProperty('compatSmoke')) {
 tasks.named('jar') {
     exclude 'dev/postmark/smoke/**', 'dev/postmark/compatsmoke/**'
     exclude 'assets/exhibition_portal/**', 'data/exhibition_portal/**'
+    exclude 'assets/anvilcraft/**', 'assets/minecraft/**', 'SOURCE.txt'
     doFirst {
         if (project.hasProperty('smokeTest') || project.hasProperty('compatSmoke')) {
             throw new GradleException('Build the release jar without smokeTest or compatSmoke.')
@@ -78,4 +81,5 @@ tasks.named('sourcesJar') {
     from('LICENSE', 'THIRD_PARTY_NOTICES.md')
     exclude 'dev/postmark/smoke/**', 'dev/postmark/compatsmoke/**'
     exclude 'assets/exhibition_portal/**', 'data/exhibition_portal/**'
+    exclude 'assets/anvilcraft/**', 'assets/minecraft/**', 'SOURCE.txt'
 }

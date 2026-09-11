@@ -11,7 +11,7 @@ class StampCatalogTest {
     private final UUID sky=UUID.fromString("493f4bbe-20c0-5d8b-bf29-ac3ce6d84076");
     private TravelJournal.KnownStamp stamp(String id,boolean owned) {return new TravelJournal.KnownStamp(id,"minecraft:paper",owned?"image.png":null,owned);}
     @Test void resourceMapsOnlyVerifiedIdentities() {
-        assertEquals(74,catalog.size());assertEquals("2026-09-10",catalog.date());
+        assertEquals(74,catalog.size());assertEquals("2026-09-11",catalog.date());
         assertEquals("MCP",catalog.entry(mcp).name());assertNull(catalog.entry(UUID.randomUUID()));
         assertEquals("Mino++",catalog.entry(UUID.fromString("01210ebf-d7c9-5eb9-83cd-bdd1f80fcf88")).name()); // player export resolves grouped E7
     }
@@ -27,13 +27,13 @@ class StampCatalogTest {
             for(var value:root.getAsJsonArray("entries")) {
                 var row=value.getAsJsonObject();if(!row.has("venue"))continue;
                 var id=UUID.fromString(row.get("venue").getAsString());var display=catalog.display(id,List.of(),false);
-                assertEquals(row.getAsJsonArray("confirmedByExport").size(),display.size());
+                assertEquals(row.has("confirmedArtworks")?row.getAsJsonArray("confirmedArtworks").size():row.getAsJsonArray("confirmedByExport").size(),display.size());
                 for(var stamp:display){assertNull(stamp.item());assertNull(stamp.asset());assertFalse(stamp.owned());}
                 assertTrue(catalog.needsInspection(id,false,List.of(),false));assertFalse(catalog.complete(id,List.of(),false));
-                confirmed+=row.getAsJsonArray("confirmedByExport").size();
+                confirmed+=display.size();
                 assertFalse(row.has("stamps"));assertFalse(row.has("searched"));assertFalse(row.has("allKnownCollected"));
             }
-            assertEquals(112,confirmed);
+            assertEquals(113,confirmed);
         }
     }
     @Test void discoveryRevealsArtworkAndCollectionLightsItWithoutWaitingForArea() {
@@ -90,5 +90,21 @@ class StampCatalogTest {
         assertFalse(catalog.needsInspection(sky,true,List.of(stamp("visitor",false),stamp("expert",false))));
         assertFalse(catalog.complete(mcp,List.of(stamp("visitor",false))));
         assertFalse(catalog.complete(sky,List.of(stamp("visitor",false),stamp("expert",false))));
+    }
+    @Test void anvilVariantsStayHiddenUntilFoundAndBothAreRequired() {
+        var venue=UUID.fromString("784b34de-ac17-567f-a9f0-bcc1853a1a5b");
+        var hidden=catalog.display(venue,List.of(),false);
+        assertEquals(2,hidden.size());assertEquals(2,hidden.stream().map(TravelJournal.KnownStamp::identity).distinct().count());
+        assertTrue(hidden.stream().allMatch(s->s.item()==null && s.asset()==null && !s.owned()));
+        var first=new TravelJournal.KnownStamp("visitor","anvilcraft:spacetime_supercomputer","a",true);
+        var second=new TravelJournal.KnownStamp("visitor","anvilcraft:celestial_forging_anvil",null,false);
+        assertFalse(catalog.complete(venue,List.of(first),true));
+        assertTrue(catalog.needsInspection(venue,true,List.of(first),true));
+        assertEquals(2,catalog.display(venue,List.of(first,second),true).size());
+        assertFalse(catalog.needsInspection(venue,true,List.of(first,second),true));
+        var both=List.of(first,new TravelJournal.KnownStamp(second.id(),second.item(),"b",true));
+        assertTrue(catalog.complete(venue,both,false));assertTrue(catalog.complete(venue,both,true));
+        var three=new ArrayList<>(both);three.add(new TravelJournal.KnownStamp("visitor","minecraft:paper",null,false));
+        assertEquals(3,catalog.display(venue,three,true).size());assertFalse(catalog.complete(venue,three,true));
     }
 }

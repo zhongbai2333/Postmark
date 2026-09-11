@@ -1,7 +1,7 @@
 {
   "version": 1,
   "event": "TeaCon 2026",
-  "date": "2026-09-10",
+  "date": "2026-09-11",
   "source": "https://docs.qq.com/sheet/DV2FjUVdIWEZEeHdk?tab=a68hpd",
   "sourceRevision": 2346,
   "identitySource": "https://github.com/teaconmc/Puer/blob/9993186cab48a2e41f757878b3458d08e25617cd/2026/data/exhibition_portal/galleries.json",
@@ -473,7 +473,7 @@
         "nekoplus",
         "voidinair"
       ],
-      "note": "不同图案共用普通章位，不重复计数",
+      "note": "不同图案共用普通章位，实地发现后分别计数",
       "confirmedByExport": [
         "expert",
         "visitor"
@@ -532,7 +532,11 @@
       "mods": [
         "anvilcraft"
       ],
-      "note": "不同图案共用普通章位，不重复计数",
+      "note": "玩家提供两处盖章台 NBT 确认；两种普通章独立收集，预设仅提供剪影数量",
+      "confirmedArtworks": [
+        {"id": "visitor", "item": "anvilcraft:spacetime_supercomputer"},
+        {"id": "visitor", "item": "anvilcraft:celestial_forging_anvil"}
+      ],
       "confirmedByExport": [
         "visitor"
       ]

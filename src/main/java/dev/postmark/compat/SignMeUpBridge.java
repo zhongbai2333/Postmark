@@ -23,16 +23,17 @@ public final class SignMeUpBridge {
     private static Object lastGallery;
     private static Pending pending;
     private static String activeScope = "";
-    private static boolean openPostcard;
+    private static boolean openPostcard,quietCapture;
     private static int ticks;
     private static String notice = "";
-    private record Pending(UUID exhibition, String id, String item, Object baseline,
+    private static final Set<String> silentRequests=new HashSet<>();
+    private record Pending(UUID exhibition, String id, String item,
                            MapPlacement.Rect rectangle, int deadline, String scope) {}
     private SignMeUpBridge() {}
     public static String notice() { return notice; }
     public static String requestedKey() { return pending == null ? null : StampIdentity.key(pending.exhibition,pending.id,pending.item); }
     public static void capture(Object exhibition, Object stamp) {
-        openPostcard = false;
+        openPostcard = false;quietCapture=false;
         try {
             var mc = Minecraft.getInstance();
             if (mc.player == null || mc.getConnection() == null) { originalEdit(exhibition,stamp); return; }
@@ -46,8 +47,11 @@ public final class SignMeUpBridge {
                 notice = "地图定位不可用，保留原印迹：" + rootMessage(e);
                 Postmark.LOGGER.warn("Cannot position automatic map stamp",e);
             }
-            // Wait for a fresh server snapshot after the interaction before sending the update.
-            pending = new Pending(uuid,id,item,gallery(),rectangle,ticks+200,ClientSession.scope());
+            // Confirm this exact artwork in the server-owned slot before sending the update.
+            pending = new Pending(uuid,id,item,rectangle,ticks+200,ClientSession.scope());
+            quietCapture=mc.options.keyShift.isDown() || mc.player.isShiftKeyDown();
+            String key=StampIdentity.key(uuid,id,item);
+            if(quietCapture)silentRequests.add(key);else silentRequests.remove(key);
             openPostcard = true;
             if (rectangle != null) notice = "正在等待盖章台确认…";
         } catch (Exception e) {
@@ -59,7 +63,8 @@ public final class SignMeUpBridge {
     public static void open(Minecraft mc, Screen original) {
         if (openPostcard) {
             openPostcard = false;
-            PostcardScreen.show(null, requestedKey());
+            if(!quietCapture)PostcardScreen.show(null, requestedKey());
+            quietCapture=false;
         } else mc.setScreen(original);
     }
     public static void tick() {
@@ -67,7 +72,7 @@ public final class SignMeUpBridge {
         if (!ModList.get().isLoaded("exhibition_portal")) return;
         var mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null || mc.getConnection() == null) {
-            pending = null; lastGallery = null; SNAPSHOTS.clear(); LABELS.clear(); activeScope = ""; return;
+            pending = null; lastGallery = null; SNAPSHOTS.clear(); LABELS.clear(); silentRequests.clear(); activeScope = ""; return;
         }
         if (pending == null && ticks % 20 != 0) return;
         try {
@@ -89,11 +94,12 @@ public final class SignMeUpBridge {
             if (pending != null) {
                 Pending p = pending;
                 if (ticks > p.deadline) { notice = "盖章台确认超时，请再次点击盖章台"; pending = null; }
-                else if (lookup != p.baseline) {
+                else {
                     Object exhibition = lookup.get(p.exhibition);
                     if (exhibition != null) {
                         for (Object stamp : stamps(exhibition)) {
                             if (p.id.equals(call(stamp,"id")) && p.item.equals(call(stamp,"item").toString())) {
+                                // The server may keep an identical snapshot when a previously owned counter is clicked again.
                                 if (p.rectangle != null) sendMapStamp(p);
                                 snapshot(exhibition,stamp);
                                 notice = p.rectangle == null ? "印章已收集；地图位置不可用，保留原印迹" : "地图已按当前位置盖章 · 明信片可以自由盖印";
@@ -112,7 +118,7 @@ public final class SignMeUpBridge {
     private static void resetScope() {
         String scope = ClientSession.scope();
         if (!scope.equals(activeScope)) {
-            activeScope = scope; SNAPSHOTS.clear(); LABELS.clear(); lastGallery = null; pending = null;
+            activeScope = scope; SNAPSHOTS.clear(); LABELS.clear(); lastGallery = null; pending = null;silentRequests.clear();
         }
     }
     private static void snapshot(Object exhibition, Object stamp) throws Exception {
@@ -127,6 +133,7 @@ public final class SignMeUpBridge {
         var cached=SNAPSHOTS.get(key);
         if(cached!=null && item.equals(cached.item())) {
             var existing=session.album().stamps().stream().filter(s->s.key().equals(key)).findFirst();
+            if(existing.isPresent())silentRequests.remove(key);
             if(existing.isPresent() && !existing.get().name().equals(label))
                 session.update(session.album().unlock(new StampDefinition(key,label,existing.get().asset(),false)));
             return;
@@ -140,7 +147,10 @@ public final class SignMeUpBridge {
                         || session!=ClientSession.get() || !SNAPSHOTS.current(key,ticket)) return;
                 if(error!=null) throw new java.io.IOException("Cannot render stamp "+item,error);
                 String asset=session.store().putImage(image);
-                session.update(session.album().unlockCaptured(new StampDefinition(key,LABELS.getOrDefault(key,label),asset,false)));
+                var acquired=new StampDefinition(key,LABELS.getOrDefault(key,label),asset,false);
+                boolean fresh=session.album().stamps().stream().noneMatch(s->s.key().equals(key) || s.key().equals(StampIdentity.slot(key))&&s.asset().equals(asset));
+                session.update(session.album().unlockCaptured(acquired));
+                if(silentRequests.remove(key)&&fresh)session.enqueueStamps(List.of(key));
             } catch(Exception e) {
                 SNAPSHOTS.failed(key,ticket);
                 Postmark.LOGGER.warn("Cannot snapshot stamp {} ({})",key,item,e);

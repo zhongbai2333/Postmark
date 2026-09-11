@@ -385,11 +385,47 @@ public final class GuideSmoke {
                 ClientSession.clear();if(!ClientSession.get().album().equals(reopened))throw new AssertionError("Reopened session collection mismatch");
                 next();
             }else if(stage==38){
-                Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"PASS: two visitor counters with different artwork remain separate through scanning, sequential SMU same-slot replacement, both guide corner pickups, export, session reload, and clear_footprint; one variant alone cannot complete; both preset and unknown unsearched galleries expose only two empty question silhouettes; client postmark export command creates separate JSON files at zero/one/two owned stamps and distinguishes local discoveries without claiming complete catalog; actual SMU clear_footprint command revokes local collection and held tool, preserves postcards/assets/discoveries, master and visitor reacquire one by one, completion and persisted reopen follow ownership; confirmed paired preset retains missing ordinary silhouette after area scan and master acquisition, later ordinary discovery reveals its face, actual pair ownership completes without area evidence; survival and creative inventory entry drag captures press/drag/release without moving carried items; screen bounds and persisted position on reopen; guide camera restored from disk; unsearched preset and ordinary venues show question; observed slots remove question; completed waypoint area resolves single or empty venue questions; two visitor variants complete only together and new expert revokes completion; area evidence persists; question, completion tag and cat footprint open details; loaded client chunk discovery 96 blocks away; unloaded server counter ignored; repeat scan retains distinct artwork after movement; real SMU 1.1.12 gallery icons and metadata; bundled preset ghosts without discovery or ownership; all 15 venues on one canvas and every caption; cursor-anchored smooth zoom; native mouse event hover enlargement; canvas drag without teleport; inventory stamp desk and return; canvas GUI 2 and 3; rotated caption and corner targets; desk and inventory mouse entries; isolated stamp hit targets; drag cancellation; real UUID teleport; SMU #visited and arrival alone never mark searched; completed loaded-chunk survey records two unowned stamps and de-duplicates counters; separate journal persists; actual counter interactions collect visitor/expert; regular completion; newly discovered third stamp revokes completion; owned stamp pickup and postcard imprint; empty survey has no invented slots. Synthetic exhibition fixtures, not a production server.");
+                TravelGuideScreen.show(null);guide=(TravelGuideScreen)mc.screen;zoomBefore=guide.zoomLevel();next();
+            }else if(stage==39 && ticks-at>15){
+                var point=guide.filterCenter(GuideFilter.MISSING);click(point[0],point[1]);next();
+            }else if(stage==40 && ticks-at>15){
+                if(guide.filter()!=GuideFilter.MISSING)throw new AssertionError("Missing filter mouse click failed");
+                var session=ClientSession.get();var catalog=StampCatalog.bundled();
+                long count=GuideBridge.venues().stream().filter(v->GuideFilter.MISSING.includes(sessionJournal().entry(v.id()).searched(),catalog.display(v.id(),sessionJournal().stamps(v.id(),session.album().stamps()),sessionJournal().areaSearched(v)))).count();
+                if(guide.canvasVenueCount()!=count)throw new AssertionError("Missing filter count mismatch");
+                shot="travel-filter-missing.png";var point=guide.filterCenter(GuideFilter.UNSEARCHED);click(point[0],point[1]);next();
+            }else if(stage==41 && ticks-at>15){
+                if(guide.filter()!=GuideFilter.UNSEARCHED)throw new AssertionError("Unsearched filter mouse click failed");
+                long count=GuideBridge.venues().stream().filter(v->!sessionJournal().entry(v.id()).searched()).count();
+                if(guide.canvasVenueCount()!=count)throw new AssertionError("Unsearched filter count mismatch");
+                shot="travel-filter-unsearched.png";next();
+            }else if(stage==42 && ticks-at>10){
+                var point=guide.filterCenter(GuideFilter.ALL);click(point[0],point[1]);next();
+            }else if(stage==43 && ticks-at>15){
+                if(guide.filter()!=GuideFilter.ALL || guide.canvasVenueCount()!=GuideBridge.venues().size())throw new AssertionError("All filter did not restore venues");
+                if(Math.abs(guide.zoomLevel()-zoomBefore)>.01)throw new AssertionError("Filter round trip lost camera zoom");
+                guide.searchFor(venue(TARGET).name());next();
+            }else if(stage==44 && ticks-at>15){
+                if(guide.canvasVenueCount()!=1)throw new AssertionError("Venue name search did not narrow results");
+                guide.searchFor("SUPER_LEAD");next();
+            }else if(stage==45 && ticks-at>15){
+                if(guide.canvasVenueCount()!=1 || guide.displayedStamps(PRESET).isEmpty())throw new AssertionError("Associated Mod search failed");
+                shot="travel-search-mod.png";next();
+            }else if(stage==46 && ticks-at>20){
+                var owned=ClientSession.get().album().stamps().stream().filter(s->s.key().startsWith(PRESET+"/")).map(StampDefinition::key).toList();
+                if(!ClientSession.get().guideReveals().containsAll(owned))throw new AssertionError("Visible guide unlocks did not finish and persist");
+                guide.searchFor("impossible-query-no-venue");next();
+            }else if(stage==47 && ticks-at>15){
+                if(guide.canvasVenueCount()!=0)throw new AssertionError("Search empty state failed");
+                guide.searchFor("");next();
+            }else if(stage==48 && ticks-at>15){
+                if(guide.canvasVenueCount()!=GuideBridge.venues().size())throw new AssertionError("Clearing search failed to restore venues");
+                Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"PASS: venue name and Mod ID search, empty query reset, visible guide stamp unlock and saved acknowledgement; actual mouse filter buttons select missing stamps and unsearched venues with correct counts, all restores the camera; two visitor counters with different artwork remain separate through scanning, sequential SMU same-slot replacement, both guide corner pickups, export, session reload, and clear_footprint; one variant alone cannot complete; both preset and unknown unsearched galleries expose only two empty question silhouettes; client postmark export command creates separate JSON files at zero/one/two owned stamps and distinguishes local discoveries without claiming complete catalog; actual SMU clear_footprint command revokes local collection and held tool, preserves postcards/assets/discoveries, master and visitor reacquire one by one, completion and persisted reopen follow ownership; confirmed paired preset retains missing ordinary silhouette after area scan and master acquisition, later ordinary discovery reveals its face, actual pair ownership completes without area evidence; survival and creative inventory entry drag captures press/drag/release without moving carried items; screen bounds and persisted position on reopen; guide camera restored from disk; unsearched preset and ordinary venues show question; observed slots remove question; completed waypoint area resolves single or empty venue questions; two visitor variants complete only together and new expert revokes completion; area evidence persists; question, completion tag and cat footprint open details; loaded client chunk discovery 96 blocks away; unloaded server counter ignored; repeat scan retains distinct artwork after movement; real SMU 1.1.12 gallery icons and metadata; bundled preset ghosts without discovery or ownership; all 15 venues on one canvas and every caption; cursor-anchored smooth zoom; native mouse event hover enlargement; canvas drag without teleport; inventory stamp desk and return; canvas GUI 2 and 3; rotated caption and corner targets; desk and inventory mouse entries; isolated stamp hit targets; drag cancellation; real UUID teleport; SMU #visited and arrival alone never mark searched; completed loaded-chunk survey records two unowned stamps and de-duplicates counters; separate journal persists; actual counter interactions collect visitor/expert; regular completion; newly discovered third stamp revokes completion; owned stamp pickup and postcard imprint; empty survey has no invented slots. Synthetic exhibition fixtures, not a production server.");
                 mc.stop();stage=99;
             }
         }catch(Throwable e){Postmark.LOGGER.error("GUIDE SMOKE FAILED stage="+stage,e);try{Files.writeString(mc.gameDirectory.toPath().resolve("guide-result.txt"),"FAIL stage="+stage+": "+e);}catch(Exception ignored){}mc.stop();stage=99;}
     }
+    private static TravelJournal sessionJournal(){try{return ClientSession.get().journal();}catch(Exception e){throw new RuntimeException(e);}}
     @SubscribeEvent public static void hoverInput(RenderFrameEvent.Pre event) {
         if(!Boolean.getBoolean("postmark.guideSmoke") || !(stage==5 || stage==50 && ticks-at<6))return;
         // Drive Minecraft's actual mouse event path before rendering without moving the user's desktop cursor.
